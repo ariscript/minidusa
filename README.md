@@ -1,3 +1,9 @@
+# miniDusa
+
+This is a smaller implementation of the finite-choice logic programming
+language Dusa, implemented in Racket, as part of our final project for
+[CS 3620 (Hack Your Own Language)](https://mballantyne.net/hyol).
+
 ## Purpose and Concepts
 
 Logic programming is a declarative programming paradigm where logical

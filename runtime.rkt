@@ -1,5 +1,7 @@
 #lang racket
 
+(require racket/stream "utils.rkt")
+
 ;; A [Maybe X] is one of:
 ;; - #f
 ;; - X
@@ -88,26 +90,21 @@
 ;; choice points in the stack have to contain enough information
 ;; to ensure that we don't make the same choice multiple times
 
-;; A SearchState is a (search-state Database RuleFragment [ListOf Datum]).
+;; A SearchState is a (search-state Database RuleFragment [SetOf Nat]).
 ;; It represents information associated with a choice point: namely, the facts
 ;; known to be true at the time of choice, the options to choose from
-;; (a now-grounded conclusion), and the list of choices which have been made.
+;; (a now-grounded conclusion), and the indices of choices which have been made.
 
 (struct search-state [database conclusion tried])
 
-;; to backtrack:
-;; - go to the search state on the top of the stack
-;; - if there are choices which have not been made, make one of those and go
-;; - otherwise, pop off of the stack and try again, a level down
-
-;; Logic                      -> [Maybe [PairOf Solution [ListOf SearchState]]]
-;; Logic [ListOf SearchState] -> [Maybe [PairOf Solution [ListOf SearchState]]]
+;; A SearchStack is a [ListOf SearchState]
 
 ;; (deduce) Database Logic -> [Maybe Database]
-  ;; pick a rule that does not require choosing, and try doing
-  ;; Database Rule -> [Maybe Database]
-;; (choose) Database Logic [ListOf SearchState] -> Database [ListOf SearchState]
+;; pick a rule that does not require choosing, and try doing
+;; Database Rule -> [Maybe Database]
+;; (choose) Database Logic SearchStack -> Database SearchStack
 
+;; A SolutionResult is [Maybe [PairOf Solution SearchStack]]
 
 ;; sample: Logic -> [Maybe Solution]
 ;; Obtain one possible solution of the given program, if one exists.
@@ -116,6 +113,69 @@
 ;; Obtain a stream of all possible solutions of the given program.
 ;; The stream may be infinite, and computing the next item may not
 ;; always terminate.
+
+(define (all prog)
+  ;; SolutionResult -> [StreamOf Solution]
+  ;; Processes a SolutionResult into a stream of Solution by recursively
+  ;; backtracking through all possible intermediate choices.
+  (define (result->stream x)
+    (match x
+      [#f (empty-stream)]
+      [(cons sol next-st) (stream-cons sol (collect-backtracked next-st))]))
+  
+  ; SearchStack -> [StreamOf Solution]
+  (define (collect-backtracked stack)
+    (result->stream (backtrack prog stack)))
+  (result->stream (solve prog '() '())))
+
+;; solve: Logic SearchStack Database -> SolutionResult
+;; Given a search state and a database of currently known facts, obtain a
+;; single solution to the program, while tracking choices made.
+
+(define (solve prog stack db)
+  #f)
+
+;; backtrack: Logic SearchStack -> SolutionResult
+;; Backtrack from the given search state and find a new solution to the given
+;; program.
+(define (backtrack prog stack)
+  ; to backtrack:
+  ; - look at the search state on the top of the stack
+  ; - if there are choices which have not been made, make one of those and go
+  ; - otherwise, pop off of the stack and try again, a level down
+
+  ;; SearchStack Nat -> SearchStack
+  ;; update the top of the search stack with the new choice made.
+  (define (update-stack stack idx)
+    (define state (first stack))
+    (cons (search-state (search-state-database state)
+                        (search-state-conclusion state)
+                        (set-add (search-state-tried state) idx))
+          (rest stack)))
+
+  ;; SearchState Nat -> Database
+  ;; Update the given database with the newly chosen fact. The conclusion
+  ;; rule fragement is closed. We make the `idx`-th choice out of all possible
+  ;; conclusion choices.
+  (define (add-to-db state idx)
+    (define db (search-state-database state))
+    (define conc (search-state-conclusion state))
+    (cons (make-fact (rule-frag-name conc)
+                     (rule-frag-terms conc)
+                     (list-ref (rule-frag-choices conc) idx)) db))
+  
+  (if (empty? stack) #f
+      (let* ([current-state (first stack)]
+             [all-choices (rule-frag-choices
+                           (search-state-conclusion current-state))]
+             [indices-tried (search-state-tried current-state)]
+             [untried (filteri (lambda (_ i)
+                                 (not (set-member? indices-tried i))))])
+        (if (empty? untried) (backtrack prog (rest stack))
+            (let ([choice-idx (random (length untried))])
+              (solve prog
+                     (update-stack stack choice-idx)
+                     (add-to-db current-state choice-idx)))))))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.

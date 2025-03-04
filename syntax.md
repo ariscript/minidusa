@@ -6,7 +6,7 @@
 <declaration> := (<conclusion>)
                | (:- <conclusion> <premise> ...+)
 
-;; either a relational propositon (attribute)
+;; either a relational proposition (attribute)
 ;; or a (closed or open) functional proposition
 <conclusion> := <attribute>
               | (is <attribute> <choices>)

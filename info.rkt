@@ -6,4 +6,4 @@
 (define pkg-desc "Description Here")
 (define version "0.0")
 (define pkg-authors '(ari))
-(define license '(Apache-2.0 OR MIT))
+(define license '(AGPL-3.0-only))

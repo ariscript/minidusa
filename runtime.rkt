@@ -44,6 +44,9 @@
 ;; - Datum
 ;; - Variable
 
+;; An OpenFact is a (fact Symbol [ListOf Term] [Option Term])
+;; It represents a fact that has not yet been fully grounded.
+
 ;; A RuleFragment is (rule-frag Symbol [ListOf Term] [ListOf Term]).
 ;; It is an _internal representation_ of the source syntax, which in
 ;; general may contain variables. These can be combined to form rules
@@ -54,7 +57,7 @@
 
 (struct rule-frag [name terms choices])
 
-;; A Rule is a (rule RuleFragment [ListOf RuleFragment])
+;; A Rule is a (rule RuleFragment [ListOf OpenFact])
 ;; It represents a conclusion which follows from the (0 or more) premises
 ;; All occurrences of variables in the conclusion must be bound by
 ;; the premises. A conclusion with no premises is just a fact.
@@ -119,6 +122,9 @@
 ;; - [PairOf Solution SearchStack]
 ;; and represents a SolutionResult where an inconsistency may have been reached
 
+;; A Substitution is a [HashOf Symbol Datum]
+;; and represents a substitituon for variables in an OpenFact.
+
 ;; sample: Logic -> [Maybe Solution]
 ;; Obtain one possible solution of the given program, if one exists.
 
@@ -133,7 +139,7 @@
   ;; backtracking through all possible intermediate choices.
   (define (result->stream x)
     (match x
-      [#f (empty-stream)]
+      [#f empty-stream]
       [(cons sol next-st) (stream-cons sol (collect-backtracked next-st))]))
   ; SearchStack -> [StreamOf Solution]
   (define (collect-backtracked stack)
@@ -152,14 +158,14 @@
 
   ;; TODO: clean up. this is clear, but ugly...
   ;; also, all calls are in tail position, to prevent stack overflow
-  (match (deduce prog db stack)
-    [(cons new-db new-st) (solve (logic-deduce-rules prog) new-db new-st)]
+  (match (deduce (logic-deduce-rules prog) db stack)
+    [(cons new-db new-st) (solve prog new-db new-st)]
     ['inconsistent ; triggers a backtrack
      (backtrack prog stack)]
     [#f
      ;; if we could not deduce, we instead try to choose
-     (match (choose prog db stack)
-       [(cons new-db new-st) (solve (logic-choose-rules prog) new-db new-st)]
+     (match (choose (logic-choose-rules prog) db stack)
+       [(cons new-db new-st) (solve prog new-db new-st)]
        ['inconsistent ; triggers a backtrack
         (backtrack prog stack)]
        [#f
@@ -228,7 +234,58 @@
 ;; Attempts to use the given rule to make a new deduction
 ;; If no deductions can be made, #f; if inconsistent, 'inconsistent
 
-(define (deduce-with-rule rule db stack) #f)
+(define (deduce-with-rule rule db stack)
+  ;; TODO: optimize by checking already known facts about conclusion
+
+  ; basic algorithm:
+  ; - get everything in db that looks like current(p)
+  ;   - same symbol, same length
+  ;   - when we get '(x), that's a known true fact that we can use
+  ;   - if we get '(), the current substitution will not work, backtrack
+  ;     - go back to when the last assignment choice was made, and try
+  ;       again
+  ; - for each, try to make those choices of variable assignments
+  ;   - add to current the remaining variables, map to whatever the known
+  ;     fact says
+  ;   - recur down the list for the other premises, using the new subst
+
+  ;; [ListOf OpenFact] Substitution -> [Maybe Substitution]
+  (define (inst prems current-subst)
+    ; - fold through all premises
+    ; - if we get a final subst:
+    ;   - we learn a new consistent fact, add it to database
+    ;   - we learn a new _inconsistent_ fact, return 'inconsistent
+    ;   - we "learn" a repeat fact, try again
+    ; - if we don't get a subst (the fold returns #f):
+    ;   - nothing new to learn, return #f
+    (match prems
+      ['()
+       ; if we get an already known fact, we try again with the next fact
+       ; candidate. this is why we need to check this inside the function
+       (let ([new-fact (ground (rule-conclusion rule) current-subst)])
+         (if (member new-fact db)
+             #f
+             current-subst))]
+      [(cons p prems)
+       (local [(define (try-ground candidates)
+                 (match candidates
+                   ; we have no more facts that work, so this substitution
+                   ; is wrong, we backtrack
+                   ['() #f]
+                   [(cons f facts)
+                    ; we try to instantiate the first fact as variable
+                    ; assignments, and recur until something (or nothing) works
+                    (match (inst prems (update-subst current-subst p f))
+                      [#f (try-ground facts)]
+                      [good-subst good-subst])]))]
+         (try-ground (find-facts db p current-subst)))]))
+  
+  (match (inst (rule-premises rule) (hash))
+    [#f #f]
+    [subst (let ([new-fact (ground (rule-conclusion rule) subst)])
+         (if (consistent? db new-fact)
+             (cons (cons new-fact db) stack)
+             'inconsistent))]))
 
 ;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one choice if possible, updating the known facts and SearchStack
@@ -236,6 +293,83 @@
 ;; then 'inconsistent
 
 (define (choose prog db stack) #f)
+
+;; find-facts: Database OpenFact Substitution -> [ListOf Fact]
+;; Get a list of facts from the database that "look like" the given open fact.
+;; A fact "looks like" an open fact if it has the same relation symbol, and
+;; all non-variable positions have equal values.
+(define (find-facts db open subst)
+  ;; Term Datum -> Boolean
+  (define (similar? term datum)
+    (match term
+      [(variable n) (if (hash-has-key? subst n)
+                        (equal? (hash-ref subst n) datum)
+                        #t)]
+      [d (equal? d datum)]))
+  
+  ;; Fact -> Boolean
+  (define (looks-like? fact)
+    (and (symbol=? (fact-name open) (fact-name fact))
+         (andmap similar?
+                 (fact-terms open)
+                 (fact-terms fact))
+         (or (and (none? (fact-value open))
+                  (none? (fact-value fact)))
+             (similar? (fact-value open) (fact-value fact)))))
+  
+  (filter looks-like? db))
+
+;; update-subst: Substitution OpenFact Fact -> Substitution
+;; PRECONDITION: f "looks like" open, as defined by `looks-like?`.
+(define (update-subst sub open f)
+  (define (assign-var t d curr-sub)
+    (match t
+      [(variable n) (if (hash-has-key? sub n)
+                        curr-sub
+                        (hash-set sub n d))]
+      [_ curr-sub]))
+  (assign-var (fact-value open)
+              (fact-value f)
+              (foldl assign-var
+                     sub
+                     (fact-terms open)
+                     (fact-terms f))))
+
+;; consistent?: Database Fact -> Bool
+;; Determine if the given fact is consistent with the database of already
+;; known facts.
+(define (consistent? db f)
+  ;; Fact -> Bool
+  ;; Determine if the known fact is consistent with the closed over fact f.
+  ;; Two facts are consistent if they do not map the same attribute to different
+  ;; values.
+  (define (fact-consistent? known)
+    (not (and (equal? (fact-name f) (fact-name known))
+              (equal? (fact-terms f) (fact-terms known))
+              (not (equal? (fact-value f) (fact-value known))))))
+  
+  (andmap fact-consistent? db))
+
+;; ground: RuleFragment Substitution -> Fact
+;; PRECONDITION: subst must contain assignments for all variables that appear
+;; in open. Requires that open has 0 or 1 choices.
+;; Apply the given substitution to fully ground the given (open) rule fragment.
+(define (ground open subst)
+  (define (ground-term t)
+    (match t
+      [(variable name) (hash-ref subst name)]
+      [_ t]))
+  
+  (define choices (rule-frag-choices open))
+  (define choice
+    (match choices
+      ['() (none)]
+      [(list c) c]
+      [_ (error 'ground "rule fragment has multiple choices")]))
+  
+  (fact (rule-frag-name open)
+        (map ground-term (rule-frag-terms open))
+        (ground-term choice)))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.
@@ -257,3 +391,9 @@
 
 ;; facts: Solution -> [ListOf Fact]
 ;; Return a list of all known facts in this solution.
+
+(module+ test
+  (define trivial (logic (list (rule (rule-frag 'foo '(1) '())
+                                     '()))
+                         '()))
+  (stream->list (all trivial)))

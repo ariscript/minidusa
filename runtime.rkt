@@ -8,7 +8,7 @@
 ;; and represents a value that might not exist.
 
 ;; A (none) represents the absence of a value
-(struct none [])
+(struct none [] #:transparent)
 
 ;; A [Option X] is one of:
 ;; - (none)
@@ -283,9 +283,9 @@
   (match (inst (rule-premises rule) (hash))
     [#f #f]
     [subst (let ([new-fact (ground (rule-conclusion rule) subst)])
-         (if (consistent? db new-fact)
-             (cons (cons new-fact db) stack)
-             'inconsistent))]))
+             (if (consistent? db new-fact)
+                 (cons (cons new-fact db) stack)
+                 'inconsistent))]))
 
 ;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one choice if possible, updating the known facts and SearchStack
@@ -322,11 +322,13 @@
 ;; update-subst: Substitution OpenFact Fact -> Substitution
 ;; PRECONDITION: f "looks like" open, as defined by `looks-like?`.
 (define (update-subst sub open f)
+  ;; Term Datum Substitition -> Substitution
+  ;; if t is a variable that does not occur in curr-sub, returns curr-sub[d/t]
   (define (assign-var t d curr-sub)
     (match t
-      [(variable n) (if (hash-has-key? sub n)
+      [(variable n) (if (hash-has-key? curr-sub n)
                         curr-sub
-                        (hash-set sub n d))]
+                        (hash-set curr-sub n d))]
       [_ curr-sub]))
   (assign-var (fact-value open)
               (fact-value f)
@@ -341,8 +343,8 @@
 (define (consistent? db f)
   ;; Fact -> Bool
   ;; Determine if the known fact is consistent with the closed over fact f.
-  ;; Two facts are consistent if they do not map the same attribute to different
-  ;; values.
+  ;; Two facts are consistent if they do not map the same attribute to
+  ;; different values.
   (define (fact-consistent? known)
     (not (and (equal? (fact-name f) (fact-name known))
               (equal? (fact-terms f) (fact-terms known))
@@ -393,7 +395,76 @@
 ;; Return a list of all known facts in this solution.
 
 (module+ test
-  (define trivial (logic (list (rule (rule-frag 'foo '(1) '())
-                                     '()))
-                         '()))
-  (stream->list (all trivial)))
+  (require rackunit)
+  
+  (define basic-rule (rule (rule-frag 'foo '(1) '()) '()))
+  ;; `foo 1.` in Dusa syntax
+  (define one-fact-prog (logic (list basic-rule) '()))
+
+  (define foo-1-fact (fact 'foo '(1) (none)))
+  
+  (check-equal?
+   (stream->list (all one-fact-prog))
+   ;; one solution consisting of one fact
+   (list (list foo-1-fact)))
+  
+  (define dependent-rule (rule (rule-frag 'foo '(2) '())
+                               (list foo-1-fact)))
+  ;; `foo 2 :- foo 1. foo 1.` in Dusa syntax
+  (define two-fact-prog (logic (list dependent-rule basic-rule) '()))
+  (define two-fact-prog* (logic (list dependent-rule basic-rule) '()))
+
+  (define foo-2-fact (fact 'foo '(2) (none)))
+
+  (check-equal?
+   (stream->list (all two-fact-prog))
+   ;; TODO: use `solution` and override equal? to make this insensitive to
+   ;; the order in which facts are deduced
+   (list (list foo-2-fact foo-1-fact)))
+
+  ;; order of the rules in the program does not matter
+  (check-equal?
+   (stream->list (all two-fact-prog*))
+   (list (list foo-2-fact foo-1-fact)))
+
+  (define var-rule (rule (rule-frag 'bar (list (variable 'x)) '())
+                         (list (fact 'foo (list (variable 'x)) (none)))))
+
+  (define var-fact-prog (logic (list var-rule basic-rule dependent-rule) '()))
+
+  ;; TODO: make this test less brittle
+  (check-equal?
+   (stream->list (all var-fact-prog))
+   (list (list (fact 'bar '(2) (none))
+               (fact 'foo '(2) (none))
+               (fact 'bar '(1) (none))
+               (fact 'foo '(1) (none)))))
+  
+  #;(define-logic datalog
+      (parent alice bob)
+      (paernt bob carol)
+
+      (:- (ancestor X Y) (parent X Y))
+      (:- (ancestor X Y) (parent X Z) (ancestor Z Y)))
+
+  (define ancestor-prog
+    (logic
+     (list (rule (rule-frag 'parent '(alice bob) '()) '())
+           (rule (rule-frag 'parent '(bob carol) '()) '())
+           (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
+                 (list
+                  (fact 'parent (list (variable 'x) (variable 'y)) (none))))
+           (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
+                 (list
+                  (fact 'parent (list (variable 'x) (variable 'z)) (none))
+                  (fact 'ancestor (list (variable 'z) (variable 'y)) (none)))))
+     '()))
+
+  (check-equal?
+   (stream->list (all ancestor-prog))
+   (list (list (fact 'ancestor '(alice carol) (none))
+               (fact 'ancestor '(alice bob) (none))
+               (fact 'ancestor '(bob carol) (none))
+               (fact 'parent '(bob carol) (none))
+               (fact 'parent '(alice bob) (none)))))
+  )

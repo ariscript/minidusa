@@ -39,9 +39,7 @@
 
 ;; name + terms = "attribute"
 ;; if we need to use attributes without values, we can abstract
-(struct fact [name terms value]
-  ;; do we want this?
-  #:transparent)
+(struct fact [name terms value] #:transparent)
 
 (define (make-fact name terms [value NONE])
   (fact name terms value))
@@ -50,7 +48,7 @@
 ;; TODO: make this something with more structure for faster lookup
 
 ;; A Variable is a (variable Symbol)
-(struct variable [name])
+(struct variable [name] #:transparent)
 
 ;; A Term is one of:
 ;; - Datum
@@ -67,14 +65,14 @@
 ;; this is a difference from the surface <term> syntax; these nested
 ;; terms will be desugared in an ANF-like pass.
 
-(struct rule-frag [name terms choices])
+(struct rule-frag [name terms choices] #:transparent)
 
 ;; A Rule is a (rule RuleFragment [ListOf OpenFact])
 ;; It represents a conclusion which follows from the (0 or more) premises
 ;; All occurrences of variables in the conclusion must be bound by
 ;; the premises. A conclusion with no premises is just a fact.
 
-(struct rule [conclusion premises])
+(struct rule [conclusion premises] #:transparent)
 
 
 ;; define-logic binds the identifier to a `Logic`
@@ -85,7 +83,7 @@
 ;; and the rules which require making choices (> 1 option on RHS of `is`)
 ;; TODO: add in information about imported Racket function(al relation)s
 
-(struct logic [deduce-rules choose-rules])
+(struct logic [deduce-rules choose-rules] #:transparent)
 
 ;; A Solution is an opaque object that can be queried for propositions.
 

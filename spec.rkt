@@ -92,13 +92,13 @@
  (is (bar 10) (choice 1 2 3))
  ((is (bar 20) (choice 4 5 6)) :- (foo 0) (is (foo 1) 45))
 
- ;; (baz (bind x))
- ;; this parses but shouldn't scope check.
+ ;; this parses but doesn't scope check.
+ ;; (baz x)
  
  ((baz X) :- (baz X) (qux X))
  ((abc X X) :- (abc X X))
  ((abc X X) :- (abc Y X))
 
- ;; like above, this should be statically rejected
+ ;; like above, this is statically rejected
  ;; ((abc Y Y) :- (abc X X))
  )

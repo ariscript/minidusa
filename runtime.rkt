@@ -1,5 +1,13 @@
 #lang racket
 
+;; these are not provided as `struct-out` since we only
+;; have to construct from the compiler, nothing else
+(provide (rename-out [make-fact fact])
+         variable
+         rule-frag
+         rule
+         logic)
+
 (require racket/stream "utils.rkt")
 
 ;; A [Maybe X] is one of:
@@ -7,14 +15,18 @@
 ;; - X
 ;; and represents a value that might not exist.
 
-;; A (none) represents the absence of a value
-(struct none [] #:transparent)
+;; NONE represents the absence of a value
+(define NONE (gensym))
+
+;; none? : Any -> Bool
+(define (none? x)
+  (equal? NONE x))
 
 ;; A [Option X] is one of:
-;; - (none)
+;; - NONE
 ;; - X
 ;; and represents a value that might not exist, using a sentinel value
-;; to differentiate between the (none) case and #f being present
+;; to differentiate between the NONE case and #f being present
 
 ;; A Datum is RacketDatum
 ;; Ideally, we would allow any Racket datum here, but this may change
@@ -31,7 +43,7 @@
   ;; do we want this?
   #:transparent)
 
-(define (make-fact name terms [value (none)])
+(define (make-fact name terms [value NONE])
   (fact name terms value))
 
 ;; A Database is a [ListOf Fact]
@@ -365,7 +377,7 @@
   (define choices (rule-frag-choices open))
   (define choice
     (match choices
-      ['() (none)]
+      ['() NONE]
       [(list c) c]
       [_ (error 'ground "rule fragment has multiple choices")]))
   
@@ -401,7 +413,7 @@
   ;; `foo 1.` in Dusa syntax
   (define one-fact-prog (logic (list basic-rule) '()))
 
-  (define foo-1-fact (fact 'foo '(1) (none)))
+  (define foo-1-fact (make-fact 'foo '(1)))
   
   (check-equal?
    (stream->list (all one-fact-prog))
@@ -414,7 +426,7 @@
   (define two-fact-prog (logic (list dependent-rule basic-rule) '()))
   (define two-fact-prog* (logic (list dependent-rule basic-rule) '()))
 
-  (define foo-2-fact (fact 'foo '(2) (none)))
+  (define foo-2-fact (make-fact 'foo '(2)))
 
   (check-equal?
    (stream->list (all two-fact-prog))
@@ -428,17 +440,17 @@
    (list (list foo-2-fact foo-1-fact)))
 
   (define var-rule (rule (rule-frag 'bar (list (variable 'x)) '())
-                         (list (fact 'foo (list (variable 'x)) (none)))))
+                         (list (make-fact 'foo (list (variable 'x))))))
 
   (define var-fact-prog (logic (list var-rule basic-rule dependent-rule) '()))
 
   ;; TODO: make this test less brittle
   (check-equal?
    (stream->list (all var-fact-prog))
-   (list (list (fact 'bar '(2) (none))
-               (fact 'foo '(2) (none))
-               (fact 'bar '(1) (none))
-               (fact 'foo '(1) (none)))))
+   (list (list (make-fact 'bar '(2))
+               (make-fact 'foo '(2))
+               (make-fact 'bar '(1))
+               (make-fact 'foo '(1)))))
   
   #;(define-logic datalog
       (parent alice bob)
@@ -453,17 +465,17 @@
            (rule (rule-frag 'parent '(bob carol) '()) '())
            (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
                  (list
-                  (fact 'parent (list (variable 'x) (variable 'y)) (none))))
+                  (make-fact 'parent (list (variable 'x) (variable 'y)) )))
            (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
                  (list
-                  (fact 'parent (list (variable 'x) (variable 'z)) (none))
-                  (fact 'ancestor (list (variable 'z) (variable 'y)) (none)))))
+                  (make-fact 'parent (list (variable 'x) (variable 'z)))
+                  (make-fact 'ancestor (list (variable 'z) (variable 'y))))))
      '()))
 
   (check-equal?
    (stream->list (all ancestor-prog))
-   (list (list (fact 'ancestor '(alice carol) (none))
-               (fact 'ancestor '(alice bob) (none))
-               (fact 'ancestor '(bob carol) (none))
-               (fact 'parent '(bob carol) (none))
-               (fact 'parent '(alice bob) (none))))))
+   (list (list (make-fact 'ancestor '(alice carol))
+               (make-fact 'ancestor '(alice bob))
+               (make-fact 'ancestor '(bob carol))
+               (make-fact 'parent '(bob carol))
+               (make-fact 'parent '(alice bob))))))

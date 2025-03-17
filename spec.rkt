@@ -6,22 +6,20 @@
          (for-syntax (all-defined-out)))
 
 (require syntax-spec-v3
-         "compile.rkt"
-         (for-syntax syntax/parse))
+         (for-syntax syntax/parse
+                     (only-in syntax-spec-v3/private/ee-lib/main lookup)
+                     "compile.rkt"))
 
 ;; see README for the grammar we are incrementally working towards
 
 (syntax-spec
- (binding-class logic-nt)
+ (binding-class logic-var)
  #;(extension-class logic-macro #:binding-space minidusa)
 
  ;; (logic <decl> ...+)
  (host-interface/expression
    (logic d:decl ...+)
-   #'(compile-logic (d ...))
-   #;(compile-logic #'(d ...))
-   ;; to use this, change to require compile.rkt for-syntax
-   )
+   (compile-logic #'(d ...)))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
@@ -58,25 +56,26 @@
    (name:id t:logic-term ...+)
    #:binding [(re-export t) ...])
 
- ;; <logic-term> ::= (bind <ID>)
- ;;                | (ref <ID>)
+ ;; <logic-term> ::= <ID>
  ;;                | <DATUM>
  (nonterminal/exporting logic-term
-   (bind v:logic-nt)
+   (~> v:id
+       (if (lookup #'v (binding-class-predicate logic-var))
+           #'(#%ref v)     ; if v has been bound as a logic-var already
+           #'(#%bind v)))
+
+   ;; TODO: is there a way to make this "private"?
+   (#%bind v:logic-var)
    #:binding (export v)
-   (ref v:logic-nt)
-   ;; TODO: if this is something powerful (like expr), then syntax-spec
-   ;; starts thinking that too many things are logic-terms
-   ;; is there `racket-datum` or similar? what about symbols?
-   ;; it would be nice to allow some expressions, though...
-   ;; another option to avoid confusion would be to require symbols throughout
+   (#%ref v:logic-var)
+   ;; TODO: maybe make this more expressive by allowing `racket-expr`s,
+   ;; perhaps wrapped in a boundary form (for both syntax and checking)
    n:number
    b:boolean
    ((~datum quote) s:id)
    ;; s:string ;; if this gets uncommented, then (bar 10) parses as logic-term
    ;; how can we have something that parses symbols, but not other stuff?
    c:char)
-
  )
 
 ;; some examples: these (surprisingly) actually work!
@@ -95,14 +94,11 @@
 
  ;; (baz (bind x))
  ;; this parses but shouldn't scope check.
- ;;
- ;; conclusions should not be able to bind, but must be able to ref
- ;; OPTION 1 = whatever expands to `bind` only does so in some places
- ;; OPTION 2 = more nonterminals to enforce this syntactically
- ;;   (I don't think that Michael's hack would work for either of these)
- ;; OPTION 3 = enforce this later as a static check when compiling
- ;; OPTION 1.5 = make atomic-term just use logic-nt, which we understand
- ;; to always be a ref. this actually DOES work with the hack above
  
- ((baz (ref x)) :- (baz (bind x)) (qux (ref x)))  ; IDE support :)
+ ((baz X) :- (baz X) (qux X))
+ ((abc X X) :- (abc X X))
+ ((abc X X) :- (abc Y X))
+
+ ;; like above, this should be statically rejected
+ ;; ((abc Y Y) :- (abc X X))
  )

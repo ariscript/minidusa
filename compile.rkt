@@ -3,11 +3,8 @@
 (provide compile-logic)
 
 ;; there are a few ways to set this up; this is from PEG class example
-(require (for-syntax syntax/parse)
-         #;(prefix-in rt: "runtime.rkt"))
 
-;; this is the version that uses a compile-time function rather than a macro
-#;(require (for-template
+(require (for-template
           racket/base
           (prefix-in rt: "runtime.rkt"))
          syntax/parse)
@@ -40,17 +37,8 @@
             (list (rule (rule-frag 'bar '(10 11) '(1 2 3))
                         '())))
 
-(define-syntax compile-logic
-  (syntax-parser
-    ;; we actually have to create a logic that splits out into two lists
-    ;; of rules, which may be better fit for a compile-time function...
-    ;; though checking which is which is still a little awkward,
-    ;; unless fewer helpers are used
-    ;; or, compile-time is-choose function, then partition with it
-    [(_ d ...) #''(d ...)]))
-
 ;; this is the old compile-time function
 ;; LogicSyntax -> RacketSyntax
-#;(define (compile-logic logic-stx)
+(define (compile-logic logic-stx)
   (syntax-parse logic-stx
     [(logic d ...) #''(d ...)]))

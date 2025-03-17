@@ -466,5 +466,4 @@
                (fact 'ancestor '(alice bob) (none))
                (fact 'ancestor '(bob carol) (none))
                (fact 'parent '(bob carol) (none))
-               (fact 'parent '(alice bob) (none)))))
-  )
+               (fact 'parent '(alice bob) (none))))))

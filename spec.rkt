@@ -72,6 +72,7 @@
    ;; another option to avoid confusion would be to require symbols throughout
    n:number
    b:boolean
+   ((~datum quote) s:id)
    ;; s:string ;; if this gets uncommented, then (bar 10) parses as logic-term
    ;; how can we have something that parses symbols, but not other stuff?
    c:char)

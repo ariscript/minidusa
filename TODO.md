@@ -1,13 +1,16 @@
 BEFORE WEDNESDAY:
 - [x] Figure out binding structure
 - [ ] Write simple compiler
+  - [ ] Once we have this, try to change back to `racket-expr`
 - [ ] Tweak spec to use internal hack
 - [ ] Prep for code walk
+  - [ ] Test both good compilation and errors
 
 NEXT STEPS:
 - [ ] Static check for symbol arity (and choose)
 - [ ] Better interfaces for `solution` and `database`
 - [ ] Implement `choose`
+- [ ] Better custom error messages
 
 
 QUESTIONS:
@@ -17,7 +20,11 @@ QUESTIONS:
 - Is there `racket-datum` or similar? What about `symbol`?
   - Any advice on having `expr` but not having everything get parsed as that?
     Maybe this will be easier once we actually compile to things
-- How much should our compile-time functions look like `define-syntax`?
-  Specifically, I'm thinking about having extra syntax in front of things
-  which we are compiling, which would be needed for macros but not for
-  compile-time functions on syntax
+- Ask about having a macro vs having a compile-time helper on syntax,
+  and what about recursive helpers? Refer to PEG and router examples
+  - Was the Router example because things wouldn't be expanded otherwise?
+  - What about mixing them? We want _some_ functions, so why not all functions?
+- Is there documentation on how to do the arity checking,
+  similarly to how you do it in mini-Kanren?
+- Do we need to match against the host-expression stuff? Surely not
+- Why would we have `define-foo` vs `make-foo` and have users define?

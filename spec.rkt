@@ -6,8 +6,8 @@
          (for-syntax (all-defined-out)))
 
 (require syntax-spec-v3
-         (for-syntax syntax/parse
-                     "compile.rkt"))
+         "compile.rkt"
+         (for-syntax syntax/parse))
 
 ;; see README for the grammar we are incrementally working towards
 
@@ -18,8 +18,10 @@
  ;; (logic <decl> ...+)
  (host-interface/expression
    (logic d:decl ...+)
-   ;; is there any reason to expand with `logic`/etc in the front??
-   (compile-logic #'(logic d ...)))
+   #'(compile-logic (d ...))
+   #;(compile-logic #'(d ...))
+   ;; to use this, change to require compile.rkt for-syntax
+   )
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule

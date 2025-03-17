@@ -1,18 +1,25 @@
 #lang racket
 
+;; maybe refine this later, yoinked from PEG class examples
+(provide (all-defined-out)
+         #;(for-space minidusa (all-defined-out))
+         (for-syntax (all-defined-out)))
+
 (require syntax-spec-v3
-         (for-syntax syntax/parse))
+         (for-syntax syntax/parse
+                     "compile.rkt"))
 
 ;; see README for the grammar we are incrementally working towards
 
 (syntax-spec
  (binding-class logic-nt)
+ #;(extension-class logic-macro #:binding-space minidusa)
 
  ;; (logic <decl> ...+)
  (host-interface/expression
    (logic d:decl ...+)
-   ;; TODO: actually compile!
-   #''(d ...))
+   ;; is there any reason to expand with `logic`/etc in the front??
+   (compile-logic #'(logic d ...)))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
@@ -64,16 +71,17 @@
    n:number
    b:boolean
    ;; s:string ;; if this gets uncommented, then (bar 10) parses as logic-term
+   ;; how can we have something that parses symbols, but not other stuff?
    c:char)
 
  )
 
-;; some examples: this (surprisingly) actually works!
+;; some examples: these (surprisingly) actually work!
 (logic
  (foo 1)
  ;; this is actually parsing as a logic-term (foo o4)
- ((foo 0) :- (foo 1))
- ((foo 2) :- (foo 0) (foo 1))
+ ((foo 2) :- (foo 1))
+ ((foo 0) :- (foo 2) (foo 1))
 
  ;; correctly fails to parse, even if message isn't great:
  ;; (is (bar 10))
@@ -95,6 +103,3 @@
  
  ((baz (ref x)) :- (baz (bind x)) (qux (ref x)))  ; IDE support :)
  )
-
-;; EXAMPLE EXPANSION!
-

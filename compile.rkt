@@ -36,6 +36,14 @@
             (list (rt:rule (rt:rule-frag 'bar '(10 11) '(1 2 3))
                            '())))
 
+#;(logic
+   ((foo X) :- (is (bar) X) (baz)))
+;; =>
+#;(rt:logic (list (rt:rule (rt:rule-frag 'foo (list (variable 'X)) '())
+                           (list (fact 'bar '() (variable 'X))
+                                 (fact 'baz '()))))
+            '())
+
 ;; this is the old compile-time function
 ;; LogicSyntax -> RacketSyntax
 (define (compile-logic logic-stx)
@@ -78,11 +86,11 @@
   (let ([compile-term ((curry compile-term) #:can-bind #f)])
     (syntax-parse conc-stx
       #:datum-literals (is choice)
-      [(is (name t ...+) (choice ch ...+))
+      [(is (name t ...) (choice ch ...+))
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with (comp-ch ...) (map compile-term (attribute ch))
        #'(rt:rule-frag 'name (list comp-t ...) (list comp-ch ...))]
-      [(name t ...+)
+      [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
        #'(rt:rule-frag 'name (list comp-t ...) '())])))
 
@@ -90,10 +98,10 @@
 (define (compile-prem prem-stx)
   (syntax-parse prem-stx
     #:datum-literals (is)
-    [(is (name t ...+) ch)
+    [(is (name t ...) ch)
      #:with (comp-t ...) (map compile-term (attribute t))
      #`(rt:fact 'name (list comp-t ...) #,(compile-term #'ch))]
-    [(name t ...+)
+    [(name t ...)
      #:with (comp-t ...) (map compile-term (attribute t))
      #'(rt:fact 'name (list comp-t ...))]))
 

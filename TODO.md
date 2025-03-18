@@ -5,7 +5,7 @@ BEFORE WEDNESDAY:
 - [x] Write simple compiler
   - [x] Static check for `bind` in conclusions of rules
   - [ ] Static check for arity: just use normal symbol table
-  - [ ] Once we have this, try to change back to `racket-expr`
+  - [ ] Once we have this, try to change back to `racket-expr`?
 - [ ] Prep for code walk
   - [ ] Test both good compilation and errors
 

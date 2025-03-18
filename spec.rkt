@@ -36,7 +36,7 @@
    ;; are attempted to be parsed as logic-terms and explode
    ((~datum is) a:attribute ((~datum choice) t:logic-term ...+))
    #:binding (scope (import a) (import t) ...)
-   
+
    a:attribute
    #:binding (scope (import a)))
 
@@ -49,11 +49,9 @@
    a:attribute
    #:binding (scope (import a) nested))
 
- ;; <attribute> ::= (<ID>)
- ;;               | (<ID> <logic-term> ...+)
+ ;; <attribute> ::= (<ID> <logic-term> ...)
  (nonterminal/exporting attribute
-   (name:id)
-   (name:id t:logic-term ...+)
+   (name:id t:logic-term ...)
    #:binding [(re-export t) ...])
 
  ;; <logic-term> ::= <ID>
@@ -80,8 +78,8 @@
 
 ;; some examples: these (surprisingly) actually work!
 (logic
+ (baz)
  (foo 1)
- ;; this is actually parsing as a logic-term (foo o4)
  ((foo 2) :- (foo 1))
  ((foo 0) :- (foo 2) (foo 1))
 
@@ -102,3 +100,6 @@
  ;; like above, this is statically rejected
  ;; ((abc Y Y) :- (abc X X))
  )
+
+(logic
+ ((foo X) :- (is (bar) X) (baz)))

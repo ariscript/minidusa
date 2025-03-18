@@ -70,9 +70,8 @@
    ;; perhaps wrapped in a boundary form (for both syntax and checking)
    n:number
    b:boolean
+   s:string
    ((~datum quote) s:id)
-   ;; s:string ;; if this gets uncommented, then (bar 10) parses as logic-term
-   ;; how can we have something that parses symbols, but not other stuff?
    c:char)
  )
 
@@ -80,6 +79,7 @@
 (logic
  (baz)
  (foo 1)
+ (foo "123")
  ((foo 2) :- (foo 1))
  ((foo 0) :- (foo 2) (foo 1))
 

@@ -18,8 +18,8 @@
 
  ;; (logic <decl> ...+)
  (host-interface/expression
-  (logic d:decl ...+)
-  (compile-logic #'(d ...)))
+   (logic d:decl ...+)
+   (compile-logic #'(d ...)))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
@@ -148,4 +148,22 @@
                              (list (rt:variable 'X) (rt:variable 'Z)))
                     (rt:fact 'ancestor
                              (list (rt:variable 'Z) (rt:variable 'Y))))))
-    '())))
+    '()))
+
+  (check-equal?
+   (logic
+    ((is (terrain R) (choice 'mountain 'forest 'ocean)) :- (region R))
+    ((is (terrain R) (choice 'forest 'ocean))
+     :-
+     (adjacent R S) (is (terrain S) 'ocean)))
+   (rt:logic
+    '()
+    (list
+     (rt:rule
+      (rt:rule-frag 'terrain (list (rt:variable 'R)) '(mountain forest ocean))
+      (list (rt:fact 'region (list (rt:variable 'R)))))
+     (rt:rule
+      (rt:rule-frag 'terrain (list (rt:variable 'R)) '(forest ocean))
+      (list
+       (rt:fact 'adjacent (list (rt:variable 'R) (rt:variable 'S)))
+       (rt:fact 'terrain (list (rt:variable 'S)) 'ocean)))))))

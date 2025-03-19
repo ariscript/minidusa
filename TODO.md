@@ -7,8 +7,8 @@ BEFORE WEDNESDAY:
   - [ ] Static check for arity: just use normal symbol table
     - [ ] Also throw in reserved keyword check
   - [ ] Once we have this, try to change back to `racket-expr`?
-- [ ] Prep for code walk
-  - [ ] Test both good compilation and errors
+- [x] Prep for code walk
+  - [x] Test both good compilation and errors
 
 NEXT STEPS:
 - [ ] Better interfaces for `solution` and `database`

@@ -6,7 +6,8 @@
          variable
          rule-frag
          rule
-         logic)
+         logic
+         all)
 
 (require racket/stream "utils.rkt")
 
@@ -74,7 +75,6 @@
 
 (struct rule [conclusion premises] #:transparent)
 
-
 ;; define-logic binds the identifier to a `Logic`
 ;; `Logic` is an opaque object that can be used to obtain solutions.
 
@@ -90,7 +90,6 @@
 ;; For now (naively), a Solution is a (solution Database)
 
 (struct solution [database])
-
 
 ;; we have some database (D) of known facts
 ;; we want to evolve this database
@@ -403,77 +402,3 @@
 
 ;; facts: Solution -> [ListOf Fact]
 ;; Return a list of all known facts in this solution.
-
-(module+ test
-  (require rackunit)
-  
-  (define basic-rule (rule (rule-frag 'foo '(1) '()) '()))
-  ;; `foo 1.` in Dusa syntax
-  (define one-fact-prog (logic (list basic-rule) '()))
-
-  (define foo-1-fact (make-fact 'foo '(1)))
-  
-  (check-equal?
-   (stream->list (all one-fact-prog))
-   ;; one solution consisting of one fact
-   (list (list foo-1-fact)))
-  
-  (define dependent-rule (rule (rule-frag 'foo '(2) '())
-                               (list foo-1-fact)))
-  ;; `foo 2 :- foo 1. foo 1.` in Dusa syntax
-  (define two-fact-prog (logic (list dependent-rule basic-rule) '()))
-  (define two-fact-prog* (logic (list dependent-rule basic-rule) '()))
-
-  (define foo-2-fact (make-fact 'foo '(2)))
-
-  (check-equal?
-   (stream->list (all two-fact-prog))
-   ;; TODO: use `solution` and override equal? to make this insensitive to
-   ;; the order in which facts are deduced
-   (list (list foo-2-fact foo-1-fact)))
-
-  ;; order of the rules in the program does not matter
-  (check-equal?
-   (stream->list (all two-fact-prog*))
-   (list (list foo-2-fact foo-1-fact)))
-
-  (define var-rule (rule (rule-frag 'bar (list (variable 'x)) '())
-                         (list (make-fact 'foo (list (variable 'x))))))
-
-  (define var-fact-prog (logic (list var-rule basic-rule dependent-rule) '()))
-
-  ;; TODO: make this test less brittle
-  (check-equal?
-   (stream->list (all var-fact-prog))
-   (list (list (make-fact 'bar '(2))
-               (make-fact 'foo '(2))
-               (make-fact 'bar '(1))
-               (make-fact 'foo '(1)))))
-  
-  #;(define-logic datalog
-      (parent alice bob)
-      (parent bob carol)
-
-      (:- (ancestor X Y) (parent X Y))
-      (:- (ancestor X Y) (parent X Z) (ancestor Z Y)))
-
-  (define ancestor-prog
-    (logic
-     (list (rule (rule-frag 'parent '(alice bob) '()) '())
-           (rule (rule-frag 'parent '(bob carol) '()) '())
-           (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
-                 (list
-                  (make-fact 'parent (list (variable 'x) (variable 'y)) )))
-           (rule (rule-frag 'ancestor (list (variable 'x) (variable 'y)) '())
-                 (list
-                  (make-fact 'parent (list (variable 'x) (variable 'z)))
-                  (make-fact 'ancestor (list (variable 'z) (variable 'y))))))
-     '()))
-
-  (check-equal?
-   (stream->list (all ancestor-prog))
-   (list (list (make-fact 'ancestor '(alice carol))
-               (make-fact 'ancestor '(alice bob))
-               (make-fact 'ancestor '(bob carol))
-               (make-fact 'parent '(bob carol))
-               (make-fact 'parent '(alice bob))))))

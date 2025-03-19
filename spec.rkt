@@ -18,8 +18,8 @@
 
  ;; (logic <decl> ...+)
  (host-interface/expression
-   (logic d:decl ...+)
-   (compile-logic #'(d ...)))
+  (logic d:decl ...+)
+  (compile-logic #'(d ...)))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
@@ -75,31 +75,77 @@
    c:char)
  )
 
-;; some examples: these (surprisingly) actually work!
-(logic
- (baz)
- (foo 1)
- (foo "123")
- ((foo 2) :- (foo 1))
- ((foo 0) :- (foo 2) (foo 1))
+(module+ test
+  (require rackunit
+           syntax/macro-testing
+           (prefix-in rt: "runtime.rkt"))
 
- ;; correctly fails to parse, even if message isn't great:
- ;; (is (bar 10))
+  (check-equal?
+   (logic
+    (foo 1))
+   (rt:logic (list (rt:rule (rt:rule-frag 'foo '(1) '())
+                            '()))
+             '()))
 
- ;; not sure if this is actually good syntax...
- (is (bar 10) (choice 1 2 3))
- ((is (bar 20) (choice 4 5 6)) :- (foo 0) (is (foo 1) 45))
+  (check-equal?
+   (logic
+    ((foo 2) :- (foo 1))
+    (foo 1))
+   (rt:logic (list (rt:rule (rt:rule-frag 'foo '(2) '())
+                            (list (rt:fact 'foo '(1))))
+                   (rt:rule (rt:rule-frag 'foo '(1) '())
+                            '()))
+             '()))
 
- ;; this parses but doesn't scope check.
- ;; (baz x)
- 
- ((baz X) :- (baz X) (qux X))
- ((abc X X) :- (abc X X))
- ((abc X X) :- (abc Y X))
+  (check-equal?
+   (logic
+    (foo "abc")
+    (is (bar #t 'a) (choice 1 2 #\c)))
+   (rt:logic (list (rt:rule (rt:rule-frag 'foo '("abc") '())
+                            '()))
+             (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
+                            '()))))
 
- ;; like above, this is statically rejected
- ;; ((abc Y Y) :- (abc X X))
- )
+  (check-equal?
+   (logic
+    ((foo X) :- (is (bar) X) (baz)))
+   (rt:logic (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+                            (list (rt:fact 'bar '() (rt:variable 'X))
+                                  (rt:fact 'baz '()))))
+             '()))
 
-(logic
- ((foo X) :- (is (bar) X) (baz)))
+  (check-exn
+   #rx"cannot bind variables in conclusions of declarations"
+   (lambda ()
+     (convert-compile-time-error
+      (logic (foo a)))))
+
+  (check-exn
+   #rx"" ;; the actual error message is bad, we don't want to specify it
+   (lambda ()
+     (convert-compile-time-error
+      (logic (is (bar 10))))))
+
+  (check-equal?
+   (logic
+    (parent 'alice 'bob)
+    (parent 'bob 'carol)
+
+    ((ancestor X Y) :- (parent X Y))
+    ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
+   (rt:logic
+    (list (rt:rule (rt:rule-frag 'parent '(alice bob) '()) '())
+          (rt:rule (rt:rule-frag 'parent '(bob carol) '()) '())
+          (rt:rule (rt:rule-frag 'ancestor
+                                 (list (rt:variable 'X) (rt:variable 'Y)) '())
+                   (list
+                    (rt:fact 'parent
+                             (list (rt:variable 'X) (rt:variable 'Y)) )))
+          (rt:rule (rt:rule-frag 'ancestor
+                                 (list (rt:variable 'X) (rt:variable 'Y)) '())
+                   (list
+                    (rt:fact 'parent
+                             (list (rt:variable 'X) (rt:variable 'Z)))
+                    (rt:fact 'ancestor
+                             (list (rt:variable 'Z) (rt:variable 'Y))))))
+    '())))

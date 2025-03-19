@@ -39,9 +39,9 @@
 #;(logic
    ((foo X) :- (is (bar) X) (baz)))
 ;; =>
-#;(rt:logic (list (rt:rule (rt:rule-frag 'foo (list (variable 'X)) '())
-                           (list (fact 'bar '() (variable 'X))
-                                 (fact 'baz '()))))
+#;(rt:logic (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+                           (list (rt:fact 'bar '() (rt:variable 'X))
+                                 (rt:fact 'baz '()))))
             '())
 
 ;; this is the old compile-time function

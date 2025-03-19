@@ -1,48 +1,28 @@
 ```bnf
-;; a top-level FCLP consists of facts and rules to make deductions
-(define-logic <declaration> ...+)
+;; a top-level finite-choice logic program consists of
+;; facts and rules to make deductions
+(logic <decl> ...+)
 
 ;; declarations are facts (conclusions) or rules
-<declaration> := (<conclusion>)
-               | (:- <conclusion> <premise> ...+)
+<decl> := (<conclusion>)
+        | (<conclusion> :- <premise> ...+)
 
-;; either a relational proposition (attribute)
-;; or a (closed or open) functional proposition
+;; either a relational proposition (attribute) or a functional proposition
+;; while conclusions can have variables, they must be bound by premises
 <conclusion> := <attribute>
-              | (is <attribute> <choices>)
-              | (is? <attribute> <choices>)
-
-;; select one or more from a finite collection of choices
-<choices> := (choice <term>...+)
+              | (is <attribute> (choice <logic-term>...+))
 
 ;; a premise to a rule, which will imply the conclusion if
 ;; satisfied, and may be either relational or functional
 <premise> := <attribute>
-           | (is <attribute> <term>)
+           | (is <attribute> <logic-term>)
 
 ;; a proposition on zero or more terms, which should
 ;; always be used with a consistent amount of terms
-<attribute> := <symbol>
-             | (<symbol> <atomic-term>...+)
+<attribute> := (<symbol> <logic-term> ...)
 
 ;; basic data in the language, either primitive data or
 ;; a constructor/proposition applied to other data
-<term> := <atomic-term>
-        | (<symbol> <atomic-term>...+)
-
-<atomic-term> := <identifier>
-               | <symbol>
-               | <int>
-               | <string>
-               | (<term>)
+<logic-term> := <ID>
+              | <DATUM>
 ```
-
-NOTES:
-
-- parens are messed up a bit
-- not sure what constructors are
-- maybe rename some things?
-- atomic data: can we expand?
-- Interaction like query vs solve vs etc
-  - This should be present in the report, can mention in presentation
-- To fit in, probably cut out term stuff

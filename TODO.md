@@ -1,7 +1,11 @@
 SYNTAX RELATED:
-- [ ] Static check for arity: just use normal symbol table
+- [ ] Experiment with removing nesting
+- [ ] Static check for arity
   - [ ] Also throw in reserved keyword check
+  - [ ] This may depend on if we have syntax in our variables
+        instead of just symbols. What is the right equality?
 - [ ] Improve `<logic-term>` to support more
+  - [ ] Ex: lists
 - [ ] Better custom error messages
 
 RUNTIME RELATED:
@@ -10,10 +14,21 @@ RUNTIME RELATED:
         (which may involve tweaking the current solver)
 - [ ] Better interfaces for `solution` and `database`
 
+CODE IMPROVEMENTS:
+- [ ] Better interfaces for `solution` and `database`?
+  - [ ] Solutions should maybe be sets
+  - [ ] Database abstraction to enable replacing with tries?
+- [ ] Maybe having an `attribute` struct would be better
+
+QUESTIONS FOR US:
+- [ ] Is it useful to know what is a binding vs a reference in our AST?
+- [ ] Reconsider `fact` and `make-fact` stuff?
 
 QUESTIONS FOR OH:
 - [ ] Ask about structuring tests and test redundancy / duplication.
   - [ ] Testing expansion vs runtime vs etc
+  - [ ] Also keep in mind we may want to export runtime functions
+        and the AST separately from each other?
 - [ ] What is `#%`?
 - [ ] Is there any more “compilation” that we could do, besides to AST?
 - [ ] If we don’t want to destroy hygiene, how should we go about that?

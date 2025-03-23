@@ -227,9 +227,9 @@
 ;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one deduction, using the first deduction rule which fires, if
 ;; possible. Returns #f if no rules can fire, and 'inconsistent if an
-;; inconsistency arises (which will trigger backtracking)
-;; Since no choices are made, the SearchStack is threaded through
-
+;; inconsistency arises (which will trigger backtracking), which can
+;; happen since singleton choices are considered deduce rules.
+;; Since no choices are made, the SearchStack is threaded through.
 (define (deduce rules db stack)
   (match rules
     ['() #f]
@@ -242,61 +242,58 @@
 ;; deduce-with-rule : Rule Database SearchStack -> ConsistencyResult
 ;; Attempts to use the given rule to make a new deduction
 ;; If no deductions can be made, #f; if inconsistent, 'inconsistent
-
 (define (deduce-with-rule rule db stack)
-  (match (inst (rule-premises rule) (hash) db rule)
+  ; to pass to inst: a substitution is "good" if it lets us deduce a new fact
+  (define (is-good-subst? subst)
+    (not (member (ground (rule-conclusion rule) subst) db)))
+
+  (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst (let ([new-fact (ground (rule-conclusion rule) subst)])
              (if (consistent? db new-fact)
                  (cons (cons new-fact db) stack)
                  'inconsistent))]))
 
-; basic algorithm:
-; - get everything in db that looks like current(p)
-;   - same symbol, same length
-;   - when we get '(x), that's a known true fact that we can use
-;   - if we get '(), the current substitution will not work, backtrack
-;     - go back to when the last assignment choice was made, and try
-;       again
-; - for each, try to make those choices of variable assignments
-;   - add to current the remaining variables, map to whatever the known
-;     fact says
-;   - recur down the list for the other premises, using the new subst
+;; basic algorithm:
+;; - get everything in db that looks like current(p)
+;;   - same symbol, same length
+;;   - when we get '(x), that's a known true fact that we can use
+;;   - if we get '(), the current substitution will not work, backtrack
+;;     - go back to when the last assignment choice was made, and try
+;;       again
+;; - for each, try to make those choices of variable assignments
+;;   - add to current the remaining variables, map to whatever the known
+;;     fact says
+;;   - recur down the list for the other premises, using the new subst
 
-
-;; inst : [ListOf OpenFact] Substitution -> [Maybe Substitution]
-;; Instantiate the
-(define (inst prems current-subst db rule)
+;; inst-premises : [ListOf OpenFact]
+;;                 Substitution
+;;                 Database
+;;                 [Substitution -> Bool]
+;;                 -> [Maybe Substitution]
+;; instantiates the premises using the known facts and accumulated substitution
+;; to produce a new substitution which satisfies the given predicate
+(define (inst-premises prems current-subst db is-good-subst?)
   ;; TODO: optimize by checking already known facts about conclusion
-  
-  ; - fold through all premises
-  ; - if we get a final subst:
-  ;   - we learn a new consistent fact, add it to database
-  ;   - we learn a new _inconsistent_ fact, return 'inconsistent
-  ;   - we "learn" a repeat fact, try again
-  ; - if we don't get a subst (the fold returns #f):
-  ;   - nothing new to learn, return #f
   (match prems
     ['()
-     ; if we get an already known fact, we try again with the next fact
-     ; candidate. this is why we need to check this inside the function
-     (let ([new-fact (ground (rule-conclusion rule) current-subst)])
-       (if (member new-fact db)
-           #f
-           current-subst))]
+     ; if the substitution is good then we return it, otherwise we give #f
+     ; which will "backtrack" AKA try again with remaining candidates
+     (and (is-good-subst? current-subst) current-subst)]
     [(cons p prems)
-     (local [(define (try-ground candidates)
-               (match candidates
-                 ; we have no more facts that work, so this substitution
-                 ; is wrong, we backtrack
-                 ['() #f]
-                 [(cons f facts)
-                  ; we try to instantiate the first fact as variable
-                  ; assignments, and recur until something (or nothing) works
-                  (match (inst prems (update-subst current-subst p f) db rule)
-                    [#f (try-ground facts)]
-                    [good-subst good-subst])]))]
-       (try-ground (find-facts db p current-subst)))]))
+     (define (try-ground candidates)
+       (match candidates
+         ; we have no more facts that work, so this substitution
+         ; is wrong, we backtrack
+         ['() #f]
+         [(cons f facts)
+          ; we try to instantiate the first fact as variable
+          ; assignments, and recur until something (or nothing) works
+          (define new-subst (update-subst current-subst p f))
+          (match (inst-premises prems new-subst db is-good-subst?)
+            [#f (try-ground facts)]
+            [the-good-subst the-good-subst])]))
+     (try-ground (find-facts db p current-subst))]))
 
 ;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one choice if possible, updating the known facts and SearchStack

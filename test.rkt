@@ -36,6 +36,38 @@
              (rt:fact 'bar '(1))
              (rt:fact 'foo '(1)))))
 
+(check-equal?
+  (stream->list (rt:all (logic
+                         (is (foo 1) (choice 'a)))))
+  (list (list (rt:fact 'foo '(1) 'a))))
+
+(check-equal?
+  (stream->list (rt:all (logic
+                         (is (foo 1) (choice 'a))
+                         ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
+  (list (list (rt:fact 'foo '(2) 'b)
+              (rt:fact 'foo '(1) 'a))))
+
+(check-equal?
+  (stream->list (rt:all (logic
+                         (is (foo 1) (choice 'a))
+                         ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
+  (list (list (rt:fact 'bar '(2) 'a)
+              (rt:fact 'foo '(1) 'a))))
+
+(check-equal?
+  (stream->list (rt:all (logic
+                         (foo 1)
+                         (foo 2)
+                         ((is (bar) (choice X)) :- (foo X)))))
+  '())
+
+(check-equal?
+  (stream->list (rt:all (logic
+                          (is (foo) (choice 'a))
+                          (is (foo) (choice 'b)))))
+  '())
+
 ;; - Alice
 ;;   - Bob
 ;;     - Carol

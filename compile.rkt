@@ -64,8 +64,8 @@
 (define (is-choose? decl-stx)  
   (syntax-parse decl-stx
     #:datum-literals (is :-)
-    [(is _ _) #t]  ; fact
-    [((is _ _) :- _ ...+) #t]  ; rule
+    [(is _ (choice _ _ ...+)) #t]  ; fact
+    [((is _ (choice _ _ ...+)) :- _ ...+) #t]  ; rule
     [_ #f]))
 
 ;; DeclSyntax -> RacketSyntax

@@ -8,16 +8,19 @@ SYNTAX RELATED:
   - [ ] Ex: lists
 - [ ] `_` logic variables
 - [ ] Singletons in `choice` should not need `choice`
-- [ ] Better custom error messages
 - [ ] `demand` and `forbid` macros
   - [ ] Depends on freshness of relation symbols
+- [ ] Nested symbols -> flatten
+- [ ] Better custom error messages
 
 RUNTIME RELATED:
 - [x] Implement `choose`
   - [x] Decide whether singleton choice rules are choose or deduce
         (which may involve tweaking the current solver)
+- [ ] **Builtin support**
+  - [ ] This also requires making changes to the syntax too
 - [ ] How much work to get this working with open rules?
-- [ ] Builtin support
+- [ ] Port over Dusa's test suite (once we support more things...)
 
 CODE IMPROVEMENTS:
 - [ ] Better interfaces for `solution` and `database`?

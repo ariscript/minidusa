@@ -66,6 +66,11 @@
 ;; this is a difference from the surface <term> syntax; these nested
 ;; terms will be desugared in an ANF-like pass.
 
+;; A ClosedRuleFragment is (rule-frag Symbol [ListOf Datum] [ListOf Datum]).
+;; it represents a rule fragment where all variables have been substituted
+;; for data. Note that a RuleFragment is "open by default", while in contrast
+;; a Fact is "closed by default", hence the inconsistent naming convention
+
 (struct rule-frag [name terms choices] #:transparent)
 
 ;; A Rule is a (rule RuleFragment [ListOf OpenFact])
@@ -134,32 +139,30 @@
 ;; A Substitution is a [HashOf Symbol Datum]
 ;; and represents a substitituon for variables in an OpenFact.
 
-;; sample: Logic -> [Maybe Solution]
+;; sample : Logic -> [Maybe Solution]
 ;; Obtain one possible solution of the given program, if one exists.
 
-;; all: Logic -> [StreamOf Solution]
+;; all : Logic -> [StreamOf Solution]
 ;; Obtain a stream of all possible solutions of the given program.
 ;; The stream may be infinite, and computing the next item may not
 ;; always terminate.
-
 (define (all prog)
-  ;; SolutionResult -> [StreamOf Solution]
+  ;; result->stream : SolutionResult -> [StreamOf Solution]
   ;; Processes a SolutionResult into a stream of Solution by recursively
   ;; backtracking through all possible intermediate choices.
   (define (result->stream x)
     (match x
       [#f empty-stream]
       [(cons sol next-st) (stream-cons sol (collect-backtracked next-st))]))
-  ; SearchStack -> [StreamOf Solution]
+  ;; collect-backtracked : SearchStack -> [StreamOf Solution]
   (define (collect-backtracked stack)
     (result->stream (backtrack prog stack)))
   
   (result->stream (solve prog '() '())))
 
-;; solve: Logic Database SearchStack -> SolutionResult
+;; solve : Logic Database SearchStack -> SolutionResult
 ;; Given a search state and a database of currently known facts, obtain a
 ;; single solution to the program, while tracking choices made. 
-
 (define (solve prog db stack)
   ; if there is an inconsistency reached, we backtrack in an attempt
   ; to get to a better spot in our tree. if all things are inconsistencies,
@@ -182,7 +185,7 @@
         ;; saturated and have reached a solution!
         (cons db stack)])]))
 
-;; backtrack: Logic SearchStack -> SolutionResult
+;; backtrack : Logic SearchStack -> SolutionResult
 ;; Backtrack from the given search state and find a new solution to the given
 ;; program.
 (define (backtrack prog stack)
@@ -191,7 +194,7 @@
   ; - if there are choices which have not been made, make one of those and go
   ; - otherwise, pop off of the stack and try again, a level down
 
-  ;; SearchStack Nat -> SearchStack
+  ;; update-stack : SearchStack Nat -> SearchStack
   ;; update the top of the search stack with the new choice made.
   (define (update-stack stack idx)
     (define state (first stack))
@@ -200,7 +203,7 @@
                         (set-add (search-state-tried state) idx))
           (rest stack)))
 
-  ;; SearchState Nat -> Database
+  ;; add-to-db : SearchState Nat -> Database
   ;; Update the given database with the newly chosen fact. The conclusion
   ;; rule fragement is closed. We make the `idx`-th choice out of all possible
   ;; conclusion choices.
@@ -243,16 +246,18 @@
 ;; Attempts to use the given rule to make a new deduction
 ;; If no deductions can be made, #f; if inconsistent, 'inconsistent
 (define (deduce-with-rule rule db stack)
-  ; to pass to inst: a substitution is "good" if it lets us deduce a new fact
+  ;; is-good-subst? : Substitution -> Bool
+  ;; in this context, a substitution is "good" if it lets us deduce a new fact
   (define (is-good-subst? subst)
-    (not (member (ground (rule-conclusion rule) subst) db)))
+    (not (member (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
 
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
-    [subst (let ([new-fact (ground (rule-conclusion rule) subst)])
-             (if (consistent? db new-fact)
-                 (cons (cons new-fact db) stack)
-                 'inconsistent))]))
+    [subst
+     (let ([new-fact (rule-frag->fact (ground (rule-conclusion rule) subst))])
+       (if (consistent? db new-fact)
+           (cons (cons new-fact db) stack)
+           'inconsistent))]))
 
 ;; basic algorithm:
 ;; - get everything in db that looks like current(p)
@@ -299,15 +304,14 @@
 ;; Makes one choice if possible, updating the known facts and SearchStack
 ;; if no choices are left to be made, returns #f. If inconsistency arises,
 ;; then 'inconsistent
-
 (define (choose prog db stack) #f)
 
-;; find-facts: Database OpenFact Substitution -> [ListOf Fact]
+;; find-facts : Database OpenFact Substitution -> [ListOf Fact]
 ;; Get a list of facts from the database that "look like" the given open fact.
 ;; A fact "looks like" an open fact if it has the same relation symbol, and
 ;; all non-variable positions have equal values.
 (define (find-facts db open subst)
-  ;; Term Datum -> Boolean
+  ;; similar? : Term Datum -> Boolean
   (define (similar? term datum)
     (match term
       [(variable n) (if (hash-has-key? subst n)
@@ -315,7 +319,7 @@
                         #t)]
       [d (equal? d datum)]))
   
-  ;; Fact -> Boolean
+  ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
     (and (symbol=? (fact-name open) (fact-name fact))
          (andmap similar?
@@ -327,10 +331,10 @@
   
   (filter looks-like? db))
 
-;; update-subst: Substitution OpenFact Fact -> Substitution
+;; update-subst : Substitution OpenFact Fact -> Substitution
 ;; PRECONDITION: f "looks like" open, as defined by `looks-like?`.
 (define (update-subst sub open f)
-  ;; Term Datum Substitition -> Substitution
+  ;; assign-var : Term Datum Substitition -> Substitution
   ;; if t is a variable that does not occur in curr-sub, returns curr-sub[d/t]
   (define (assign-var t d curr-sub)
     (match t
@@ -338,6 +342,7 @@
                         curr-sub
                         (hash-set curr-sub n d))]
       [_ curr-sub]))
+  
   (assign-var (fact-value open)
               (fact-value f)
               (foldl assign-var
@@ -345,11 +350,11 @@
                      (fact-terms open)
                      (fact-terms f))))
 
-;; consistent?: Database Fact -> Bool
+;; consistent? : Database Fact -> Bool
 ;; Determine if the given fact is consistent with the database of already
 ;; known facts.
 (define (consistent? db f)
-  ;; Fact -> Bool
+  ;; fact-consistent? : Fact -> Bool
   ;; Determine if the known fact is consistent with the closed over fact f.
   ;; Two facts are consistent if they do not map the same attribute to
   ;; different values.
@@ -360,26 +365,30 @@
   
   (andmap fact-consistent? db))
 
-;; ground: RuleFragment Substitution -> Fact
+;; ground : RuleFragment Substitution -> ClosedRuleFragment
 ;; PRECONDITION: subst must contain assignments for all variables that appear
-;; in open. Requires that open has 0 or 1 choices.
-;; Apply the given substitution to fully ground the given (open) rule fragment.
+;; which will always be the case, due to static checks in the parser/compiler.
+;; Closes off the (possibly open) RuleFragment using the given substitution
 (define (ground open subst)
+  ;; ground-term : Term -> Datum
   (define (ground-term t)
     (match t
       [(variable name) (hash-ref subst name)]
       [_ t]))
   
-  (define choices (rule-frag-choices open))
-  (define choice
-    (match choices
+  (rule-frag (rule-frag-name open)
+             (map ground-term (rule-frag-terms open))
+             (map ground-term (rule-frag-choices open))))
+
+;; rule-frag->fact : ClosedRuleFragment -> Fact
+;; PRECONDITION: the ClosedRuleFragment must be making 0 or 1 choices
+(define (rule-frag->fact frag)
+  (define fact-value
+    (match (rule-frag-choices frag)
       ['() NONE]
       [(list c) c]
-      [_ (error 'ground "rule fragment has multiple choices")]))
-  
-  (fact (rule-frag-name open)
-        (map ground-term (rule-frag-terms open))
-        (ground-term choice)))
+      [_ (error 'rule-frag->fact "rule fragment has multiple choices")]))
+  (fact (rule-frag-name frag) (rule-frag-terms frag) fact-value))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.

@@ -202,45 +202,40 @@
                         (search-state-conclusion state)
                         (set-add (search-state-tried state) idx))
           (rest stack)))
-
-  ;; add-to-db : SearchState Nat -> Database
-  ;; Update the given database with the newly chosen fact. The conclusion
-  ;; rule fragement is closed. We make the `idx`-th choice out of all possible
-  ;; conclusion choices.
-  (define (add-to-db state idx)
-    (define db (search-state-database state))
-    (define conc (search-state-conclusion state))
-    (cons (make-fact (rule-frag-name conc)
-                     (rule-frag-terms conc)
-                     (list-ref (rule-frag-choices conc) idx)) db))
   
   (if (empty? stack) #f
       (let* ([current-state (first stack)]
-             [all-choices (rule-frag-choices
-                           (search-state-conclusion current-state))]
+             [current-db (search-state-database current-state)]
+             [conclusion (search-state-conclusion current-state)]
+             [all-choices (rule-frag-choices conclusion)]
              [indices-tried (search-state-tried current-state)]
-             [untried (filteri (lambda (_ i)
-                                 (not (set-member? indices-tried i))))])
-        (if (empty? untried) (backtrack prog (rest stack))
-            (let ([choice-idx (random (length untried))])
-              (solve prog
-                     (add-to-db current-state choice-idx)
-                     (update-stack stack choice-idx)))))))
+             ; for now, we choose the next choice in order, for easier testing
+             ; we still use a set to enable future changes to the order
+             [idx-to-try (add1 (apply max (set->list indices-tried)))])
+        (if (< idx-to-try (length all-choices))
+            (let ([new-fact (rule-frag->fact/choose conclusion idx-to-try)]
+                  [new-stack (update-stack stack idx-to-try)])
+              (if (consistent? current-db new-fact)
+                  (solve prog (cons new-fact current-db) new-stack)
+                  ; backtrack, but make the next choice
+                  (backtrack prog new-stack)))
+            ; if we ran out of choices, then pop off the stack
+            (backtrack prog (rest stack))))))
 
-;; fire-first-rule : [Rule Database SearchStack -> ConsistencyResult]
-;;                   [ListOf Rule]
-;;                   Database
-;;                   SearchStack
-;;                   -> ConsistencyResult
+;; pick-and-fire-rule : [Rule Database SearchStack -> ConsistencyResult]
+;;                     [ListOf Rule]
+;;                     Database
+;;                     SearchStack
+;;                     -> ConsistencyResult
 ;; abstracts the differences between deduction and choice
 ;; finds the first rule which fires and fires it, using the supplied
 ;; function. Returns #f if nothing fires and 'inconsistent if inconsistency
-(define (fire-first-rule fire-rule rules db stack)
+(define (pick-and-fire-rule fire-rule rules db stack)
   (match rules
     ['() #f]
     [(cons rule rules)
      (match (fire-rule rule db stack)
-       [#f (fire-first-rule fire-rule rules db stack)]
+       [#f (pick-and-fire-rule fire-rule rules db stack)]
        ;; propogates inconsistency, or returns the new good db + stack
        [res res])]))
 
@@ -256,36 +251,45 @@
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst
-     (let ([new-fact (rule-frag->fact (ground (rule-conclusion rule) subst))])
-       (if (consistent? db new-fact)
-           (cons (cons new-fact db) stack)
-           'inconsistent))]))
+     (define new-fact (rule-frag->fact (ground (rule-conclusion rule) subst)))
+     (if (consistent? db new-fact)
+         (cons (cons new-fact db) stack)
+         'inconsistent)]))
 
 ;; choose-with-rule : Rule Database SearchStack -> ConsistencyResult
 ;; Attempts to use the given rule to make a new deduction
 ;; If no deductions can be made, #f; if inconsistent, 'inconsistent
 (define (choose-with-rule rule db stack)
-  (raise 'implement-me)
   ;; is-good-subst? : Substitution -> Bool
-  ;; in this context, a substitution is "good" if it lets us deduce a new fact
-  #;(define (is-good-subst? subst)
-    (not (member (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
+  ;; in this context, a substitution is "good" if the conclusion grounded
+  ;; by the substitution is different from all previous choices made
+  ;; (good substitutions will let us make new choices or find inconsistencies)
+  (define (is-good-subst? subst)
+    ;; TODO: optimize by filtering out inconsistent choices
+    (define grounded-conclusion (ground (rule-conclusion rule) subst))
+    (andmap (lambda (state)
+              (not (equal? (search-state-conclusion state)
+                           grounded-conclusion)))
+            stack))
 
-  #;(match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
+  (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst
-     (let ([new-fact (rule-frag->fact (ground (rule-conclusion rule) subst))])
-       (if (consistent? db new-fact)
-           (cons (cons new-fact db) stack)
-           'inconsistent))]))
+     (define new-conc (ground (rule-conclusion rule) subst))
+     ; we initially pick the 0-th choice
+     (define new-state (search-state db new-conc (set 0)))
+     (define new-fact (rule-frag->fact/choose new-conc 0))
+     (if (consistent? db new-fact)
+         (cons (cons new-fact db) (cons new-state stack))
+         'inconsistent)]))
 
 ;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one deduction if possible, using the first deduction rule which fires.
-(define deduce ((curry fire-first-rule) deduce-with-rule))
+(define deduce ((curry pick-and-fire-rule) deduce-with-rule))
 
 ;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one choice if possible, using the first deduction rule which fires.
-(define choose ((curry fire-first-rule) choose-with-rule))
+(define choose ((curry pick-and-fire-rule) choose-with-rule))
 
 ;; basic algorithm:
 ;; - get everything in db that looks like current(p)
@@ -411,6 +415,13 @@
       [(list c) c]
       [_ (error 'rule-frag->fact "rule fragment has multiple choices")]))
   (fact (rule-frag-name frag) (rule-frag-terms frag) fact-value))
+
+;; rule-frag->fact/choose : ClosedRuleFragment Nat -> Fact
+;; Turns a closed rule fragment into a fact by making the `idx`-th choice
+(define (rule-frag->fact/choose frag idx)
+  (make-fact (rule-frag-name frag)
+             (rule-frag-terms frag)
+             (list-ref (rule-frag-choices frag) idx)))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.

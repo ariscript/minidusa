@@ -37,36 +37,88 @@
              (rt:fact 'foo '(1)))))
 
 (check-equal?
-  (stream->list (rt:all (logic
-                         (is (foo 1) (choice 'a)))))
-  (list (list (rt:fact 'foo '(1) 'a))))
+ (stream->list (rt:all (logic
+                        (is (foo 1) (choice 'a)))))
+ (list (list (rt:fact 'foo '(1) 'a))))
 
 (check-equal?
-  (stream->list (rt:all (logic
-                         (is (foo 1) (choice 'a))
-                         ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
-  (list (list (rt:fact 'foo '(2) 'b)
-              (rt:fact 'foo '(1) 'a))))
+ (stream->list (rt:all (logic
+                        (is (foo 1) (choice 'a))
+                        ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
+ (list (list (rt:fact 'foo '(2) 'b)
+             (rt:fact 'foo '(1) 'a))))
 
 (check-equal?
-  (stream->list (rt:all (logic
-                         (is (foo 1) (choice 'a))
-                         ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
-  (list (list (rt:fact 'bar '(2) 'a)
-              (rt:fact 'foo '(1) 'a))))
+ (stream->list (rt:all (logic
+                        (is (foo 1) (choice 'a))
+                        ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
+ (list (list (rt:fact 'bar '(2) 'a)
+             (rt:fact 'foo '(1) 'a))))
 
 (check-equal?
-  (stream->list (rt:all (logic
-                         (foo 1)
-                         (foo 2)
-                         ((is (bar) (choice X)) :- (foo X)))))
-  '())
+ (stream->list (rt:all (logic
+                        (foo 1)
+                        (foo 2)
+                        ((is (bar) (choice X)) :- (foo X)))))
+ '())
 
 (check-equal?
-  (stream->list (rt:all (logic
-                          (is (foo) (choice 'a))
-                          (is (foo) (choice 'b)))))
-  '())
+ (stream->list (rt:all (logic
+                        (is (foo) (choice 'a))
+                        (is (foo) (choice 'b)))))
+ '())
+
+(check-equal?
+ (stream->list (rt:all (logic
+                        (is (foo) (choice 'a 'b)))))
+ (list (list (rt:fact 'foo '() 'a))
+       (list (rt:fact 'foo '() 'b))))
+
+#;(check-equal?
+ (stream->list (rt:all (logic
+                        (is (foo) (choice 'a 'b))
+                        (is (foo) (choice 'b 'c)))))
+ (list (list (rt:fact 'foo '() 'b))))
+
+(check-equal?
+ (length (stream->list (rt:all (logic
+                                (edge 'a 'b)
+                                (edge 'b 'c)
+                                ((edge X Y) :- (edge Y X))
+                                ((node X) :- (edge X _))
+                                ((is (color X) (choice 1 2 3)) :- (node X))))))
+ 27)
+
+(check-equal?
+ (length (stream->list (rt:all (logic
+                                (edge 'a 'b)
+                                (edge 'b 'c)
+                                ((edge X Y) :- (edge Y X))
+                                ((node X) :- (edge X _))
+                                ((is (color X) (choice 1 2 3)) :- (node X))
+
+                                (is (ok) (choice #t))
+                                ((is (ok) (choice #f)) :- (edge X Y)
+                                                       (is (color X) C)
+                                                       (is (color Y) C))))))
+ 12)
+
+(check-equal?
+ (length (stream->list (rt:all (logic
+                                (edge 'a 'b)
+                                (edge 'b 'c)
+                                (edge 'a 'c)
+                                (edge 'c 'd)
+                                (edge 'a 'e)
+                                ((edge X Y) :- (edge Y X))
+                                ((node X) :- (edge X _))
+                                ((is (color X) (choice 1 2 3)) :- (node X))
+
+                                (is (ok) (choice #t))
+                                ((is (ok) (choice #f)) :- (edge X Y)
+                                                       (is (color X) C)
+                                                       (is (color Y) C))))))
+ 24)
 
 ;; - Alice
 ;;   - Bob
@@ -86,15 +138,15 @@
 
 (check-equal?
  (stream->list (rt:all ancestor-prog))
-   (list
  (list
-  (rt:fact 'ancestor '(alice dianne))
-  (rt:fact 'ancestor '(alice carol))
-  (rt:fact 'ancestor '(alice bob))
-  (rt:fact 'ancestor '(bob carol))
-  (rt:fact 'ancestor '(bob dianne))
-  (rt:fact 'ancestor '(alice ethan))
-  (rt:fact 'parent '(alice ethan))
-  (rt:fact 'parent '(bob dianne))
-  (rt:fact 'parent '(bob carol))
-  (rt:fact 'parent '(alice bob)))))
+  (list
+   (rt:fact 'ancestor '(alice dianne))
+   (rt:fact 'ancestor '(alice carol))
+   (rt:fact 'ancestor '(alice bob))
+   (rt:fact 'ancestor '(bob carol))
+   (rt:fact 'ancestor '(bob dianne))
+   (rt:fact 'ancestor '(alice ethan))
+   (rt:fact 'parent '(alice ethan))
+   (rt:fact 'parent '(bob dianne))
+   (rt:fact 'parent '(bob carol))
+   (rt:fact 'parent '(alice bob)))))

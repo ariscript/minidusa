@@ -6,19 +6,25 @@ SYNTAX RELATED:
         instead of just symbols. What is the right equality?
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
+- [ ] `_` logic variables
+- [ ] Singletons in `choice` should not need `choice`
 - [ ] Better custom error messages
+- [ ] `demand` and `forbid` macros
+  - [ ] Depends on freshness of relation symbols
 
 RUNTIME RELATED:
-- [ ] Implement `choose`
-  - [ ] Decide whether singleton choice rules are choose or deduce
+- [x] Implement `choose`
+  - [x] Decide whether singleton choice rules are choose or deduce
         (which may involve tweaking the current solver)
-- [ ] Better interfaces for `solution` and `database`
+- [ ] How much work to get this working with open rules?
+- [ ] Builtin support
 
 CODE IMPROVEMENTS:
 - [ ] Better interfaces for `solution` and `database`?
-  - [ ] Solutions should maybe be sets
+  - [ ] Solutions should maybe be sets, with the right equality
   - [ ] Database abstraction to enable replacing with tries?
 - [ ] Maybe having an `attribute` struct would be better
+- [ ] Testing infrastructure improvements
 
 QUESTIONS FOR US:
 - [ ] Is it useful to know what is a binding vs a reference in our AST?

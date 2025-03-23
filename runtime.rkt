@@ -227,18 +227,20 @@
                      (add-to-db current-state choice-idx)
                      (update-stack stack choice-idx)))))))
 
-;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
-;; Makes one deduction, using the first deduction rule which fires, if
-;; possible. Returns #f if no rules can fire, and 'inconsistent if an
-;; inconsistency arises (which will trigger backtracking), which can
-;; happen since singleton choices are considered deduce rules.
-;; Since no choices are made, the SearchStack is threaded through.
-(define (deduce rules db stack)
+;; fire-first-rule : [Rule Database SearchStack -> ConsistencyResult]
+;;                   [ListOf Rule]
+;;                   Database
+;;                   SearchStack
+;;                   -> ConsistencyResult
+;; abstracts the differences between deduction and choice
+;; finds the first rule which fires and fires it, using the supplied
+;; function. Returns #f if nothing fires and 'inconsistent if inconsistency
+(define (fire-first-rule fire-rule rules db stack)
   (match rules
     ['() #f]
     [(cons rule rules)
-     (match (deduce-with-rule rule db stack)
-       [#f (deduce rules db stack)]
+     (match (fire-rule rule db stack)
+       [#f (fire-first-rule fire-rule rules db stack)]
        ;; propogates inconsistency, or returns the new good db + stack
        [res res])]))
 
@@ -258,6 +260,32 @@
        (if (consistent? db new-fact)
            (cons (cons new-fact db) stack)
            'inconsistent))]))
+
+;; choose-with-rule : Rule Database SearchStack -> ConsistencyResult
+;; Attempts to use the given rule to make a new deduction
+;; If no deductions can be made, #f; if inconsistent, 'inconsistent
+(define (choose-with-rule rule db stack)
+  (raise 'implement-me)
+  ;; is-good-subst? : Substitution -> Bool
+  ;; in this context, a substitution is "good" if it lets us deduce a new fact
+  #;(define (is-good-subst? subst)
+    (not (member (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
+
+  #;(match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
+    [#f #f]
+    [subst
+     (let ([new-fact (rule-frag->fact (ground (rule-conclusion rule) subst))])
+       (if (consistent? db new-fact)
+           (cons (cons new-fact db) stack)
+           'inconsistent))]))
+
+;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
+;; Makes one deduction if possible, using the first deduction rule which fires.
+(define deduce ((curry fire-first-rule) deduce-with-rule))
+
+;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
+;; Makes one choice if possible, using the first deduction rule which fires.
+(define choose ((curry fire-first-rule) choose-with-rule))
 
 ;; basic algorithm:
 ;; - get everything in db that looks like current(p)
@@ -299,12 +327,6 @@
             [#f (try-ground facts)]
             [the-good-subst the-good-subst])]))
      (try-ground (find-facts db p current-subst))]))
-
-;; choose : [ListOf Rule] Database SearchStack -> ConsistencyResult
-;; Makes one choice if possible, updating the known facts and SearchStack
-;; if no choices are left to be made, returns #f. If inconsistency arises,
-;; then 'inconsistent
-(define (choose prog db stack) #f)
 
 ;; find-facts : Database OpenFact Substitution -> [ListOf Fact]
 ;; Get a list of facts from the database that "look like" the given open fact.

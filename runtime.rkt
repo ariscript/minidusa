@@ -16,18 +16,17 @@
 ;; - X
 ;; and represents a value that might not exist.
 
-;; NONE represents the absence of a value
-(define NONE (gensym))
-
-;; none? : Any -> Bool
-(define (none? x)
-  (equal? NONE x))
-
 ;; A [Option X] is one of:
 ;; - NONE
 ;; - X
 ;; and represents a value that might not exist, using a sentinel value
 ;; to differentiate between the NONE case and #f being present
+
+(define NONE (gensym))
+
+;; none? : Any -> Bool
+(define (none? x)
+  (equal? NONE x))
 
 ;; A Datum is RacketDatum
 ;; Ideally, we would allow any Racket datum here, but this may change
@@ -81,7 +80,7 @@
 (struct rule [conclusion premises] #:transparent)
 
 ;; define-logic binds the identifier to a `Logic`
-;; `Logic` is an opaque object that can be used to obtain solutions.
+;; `Logic` is an object that can be used to obtain solutions.
 
 ;; Internally, we know that a Logic is a (logic [ListOf Rule] [ListOf Rule])
 ;; storing the rules which never require making a choice in the conclusion
@@ -94,7 +93,7 @@
 
 ;; For now (naively), a Solution is a (solution Database)
 
-(struct solution [database])
+(struct solution [database] #:transparent)
 
 ;; we have some database (D) of known facts
 ;; we want to evolve this database
@@ -168,21 +167,21 @@
   ; to get to a better spot in our tree. if all things are inconsistencies,
   ; then backtrack and solve will call each other and eventually return #f
 
-  ;; TODO: clean up. this is clear, but ugly...
-  ;; also, all calls are in tail position, to prevent stack overflow
+  ; TODO: clean up. this is clear, but ugly...
+  ; also, all calls are in tail position, to prevent stack overflow
   (match (deduce (logic-deduce-rules prog) db stack)
     [(cons new-db new-st) (solve prog new-db new-st)]
     ['inconsistent ; triggers a backtrack
      (backtrack prog stack)]
     [#f
-     ;; if we could not deduce, we instead try to choose
+     ; if we could not deduce, we instead try to choose
      (match (choose (logic-choose-rules prog) db stack)
        [(cons new-db new-st) (solve prog new-db new-st)]
        ['inconsistent ; triggers a backtrack
         (backtrack prog stack)]
        [#f
-        ;; if no new deductions or choices are left to be made, we are
-        ;; saturated and have reached a solution!
+        ; if no new deductions or choices are left to be made, we are
+        ; saturated and have reached a solution!
         (cons db stack)])]))
 
 ;; backtrack : Logic SearchStack -> SolutionResult
@@ -236,7 +235,7 @@
     [(cons rule rules)
      (match (fire-rule rule db stack)
        [#f (pick-and-fire-rule fire-rule rules db stack)]
-       ;; propogates inconsistency, or returns the new good db + stack
+       ; propogates inconsistency, or returns the new good db + stack
        [res res])]))
 
 ;; deduce-with-rule : Rule Database SearchStack -> ConsistencyResult
@@ -265,7 +264,7 @@
   ;; by the substitution is different from all previous choices made
   ;; (good substitutions will let us make new choices or find inconsistencies)
   (define (is-good-subst? subst)
-    ;; TODO: optimize by filtering out inconsistent choices
+    ; TODO: optimize by filtering out inconsistent choices
     (define grounded-conclusion (ground (rule-conclusion rule) subst))
     (andmap (lambda (state)
               (not (equal? (search-state-conclusion state)

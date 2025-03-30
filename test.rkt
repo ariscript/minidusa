@@ -1,7 +1,6 @@
 #lang racket
 
 (require rackunit
-         racket/lazy-require
          (prefix-in rt: "runtime.rkt")
          "spec.rkt")
 

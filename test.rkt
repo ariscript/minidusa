@@ -8,7 +8,7 @@
 (check-equal?
  (stream->list (rt:all (logic (foo 1))))
  ;; one solution consisting of one fact
- (list (list (rt:fact 'foo '(1)))))
+ (list (rt:solution (set (rt:fact 'foo '(1))))))
 
 (check-equal?
  (stream->list (rt:all (logic
@@ -16,14 +16,14 @@
                         (foo 1))))
  ;; TODO: use `solution` and override equal? to make this insensitive to
  ;; the order in which facts are deduced
- (list (list (rt:fact 'foo '(2)) (rt:fact 'foo '(1)))))
+ (list (rt:solution (set (rt:fact 'foo '(2)) (rt:fact 'foo '(1))))))
 
 ;; order of the rules in the program does not matter
 (check-equal?
  (stream->list (rt:all (logic
                         (foo 1)
                         ((foo 2) :- (foo 1)))))
- (list (list (rt:fact 'foo '(2)) (rt:fact 'foo '(1)))))
+ (list (rt:solution (set (rt:fact 'foo '(2)) (rt:fact 'foo '(1))))))
 
 ;; TODO: make this test less brittle
 (check-equal?
@@ -31,29 +31,29 @@
                         (foo 1)
                         ((bar X) :- (foo X))
                         ((foo 2) :- (foo 1)))))
- (list (list (rt:fact 'bar '(2))
-             (rt:fact 'foo '(2))
-             (rt:fact 'bar '(1))
-             (rt:fact 'foo '(1)))))
+ (list (rt:solution (set (rt:fact 'bar '(2))
+                      (rt:fact 'foo '(2))
+                      (rt:fact 'bar '(1))
+                      (rt:fact 'foo '(1))))))
 
 (check-equal?
  (stream->list (rt:all (logic
                         (is (foo 1) (choice 'a)))))
- (list (list (rt:fact 'foo '(1) 'a))))
+ (list (rt:solution (set (rt:fact 'foo '(1) 'a)))))
 
 (check-equal?
  (stream->list (rt:all (logic
                         (is (foo 1) (choice 'a))
                         ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
- (list (list (rt:fact 'foo '(2) 'b)
-             (rt:fact 'foo '(1) 'a))))
+ (list (rt:solution (set (rt:fact 'foo '(2) 'b)
+                      (rt:fact 'foo '(1) 'a)))))
 
 (check-equal?
  (stream->list (rt:all (logic
                         (is (foo 1) (choice 'a))
                         ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
- (list (list (rt:fact 'bar '(2) 'a)
-             (rt:fact 'foo '(1) 'a))))
+ (list (rt:solution (set (rt:fact 'bar '(2) 'a)
+                      (rt:fact 'foo '(1) 'a)))))
 
 (check-equal?
  (stream->list (rt:all (logic
@@ -71,14 +71,14 @@
 (check-equal?
  (stream->list (rt:all (logic
                         (is (foo) (choice 'a 'b)))))
- (list (list (rt:fact 'foo '() 'a))
-       (list (rt:fact 'foo '() 'b))))
+ (list (rt:solution (set (rt:fact 'foo '() 'a)))
+       (rt:solution (set (rt:fact 'foo '() 'b)))))
 
-#;(check-equal?
- (stream->list (rt:all (logic
-                        (is (foo) (choice 'a 'b))
-                        (is (foo) (choice 'b 'c)))))
- (list (list (rt:fact 'foo '() 'b))))
+(check-equal?
+   (stream->list (rt:all (logic
+                          (is (foo) (choice 'a 'b))
+                          (is (foo) (choice 'b 'c)))))
+   (list (rt:solution (set (rt:fact 'foo '() 'b)))))
 
 (check-equal?
  (length (stream->list (rt:all (logic
@@ -139,14 +139,14 @@
 (check-equal?
  (stream->list (rt:all ancestor-prog))
  (list
-  (list
-   (rt:fact 'ancestor '(alice dianne))
-   (rt:fact 'ancestor '(alice carol))
-   (rt:fact 'ancestor '(alice bob))
-   (rt:fact 'ancestor '(bob carol))
-   (rt:fact 'ancestor '(bob dianne))
-   (rt:fact 'ancestor '(alice ethan))
-   (rt:fact 'parent '(alice ethan))
-   (rt:fact 'parent '(bob dianne))
-   (rt:fact 'parent '(bob carol))
-   (rt:fact 'parent '(alice bob)))))
+  (rt:solution (set
+                (rt:fact 'ancestor '(alice dianne))
+                (rt:fact 'ancestor '(alice carol))
+                (rt:fact 'ancestor '(alice bob))
+                (rt:fact 'ancestor '(bob carol))
+                (rt:fact 'ancestor '(bob dianne))
+                (rt:fact 'ancestor '(alice ethan))
+                (rt:fact 'parent '(alice ethan))
+                (rt:fact 'parent '(bob dianne))
+                (rt:fact 'parent '(bob carol))
+                (rt:fact 'parent '(alice bob))))))

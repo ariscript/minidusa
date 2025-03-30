@@ -3,6 +3,7 @@
 ;; these are not provided as `struct-out` since we only
 ;; have to construct from the compiler, nothing else
 (provide (rename-out [make-fact fact])
+         solution
          variable
          rule-frag
          rule
@@ -22,7 +23,7 @@
 ;; and represents a value that might not exist, using a sentinel value
 ;; to differentiate between the NONE case and #f being present
 
-(define NONE (gensym))
+(define NONE (gensym "none"))
 
 ;; none? : Any -> Bool
 (define (none? x)
@@ -44,7 +45,7 @@
 (define (make-fact name terms [value NONE])
   (fact name terms value))
 
-;; A Database is a [ListOf Fact]
+;; A Database is a [SetOf Fact]
 ;; TODO: make this something with more structure for faster lookup
 
 ;; A Variable is a (variable Symbol)
@@ -127,12 +128,15 @@
 ;; Database Rule -> [Maybe Database]
 ;; (choose) Database Logic SearchStack -> Database SearchStack
 
-;; A SolutionResult is [Maybe [PairOf Solution SearchStack]]
+;; A DatabaseState is a (db-state Database SearchStack)
+(struct db-state [db stack])
+
+;; A SolutionResult is [Maybe DatabaseState]
 
 ;; An ConsistencyResult is one of:
 ;; - 'inconsistent
 ;; - #f
-;; - [PairOf Solution SearchStack]
+;; - DatabaseState
 ;; and represents a SolutionResult where an inconsistency may have been reached
 
 ;; A Substitution is a [HashOf Symbol Datum]
@@ -152,12 +156,13 @@
   (define (result->stream x)
     (match x
       [#f empty-stream]
-      [(cons sol next-st) (stream-cons sol (collect-backtracked next-st))]))
+      [(db-state final-db next-st)
+       (stream-cons (solution final-db) (collect-backtracked next-st))]))
   ;; collect-backtracked : SearchStack -> [StreamOf Solution]
   (define (collect-backtracked stack)
     (result->stream (backtrack prog stack)))
   
-  (result->stream (solve prog '() '())))
+  (result->stream (solve prog (set) '())))
 
 ;; solve : Logic Database SearchStack -> SolutionResult
 ;; Given a search state and a database of currently known facts, obtain a
@@ -170,19 +175,19 @@
   ; TODO: clean up. this is clear, but ugly...
   ; also, all calls are in tail position, to prevent stack overflow
   (match (deduce (logic-deduce-rules prog) db stack)
-    [(cons new-db new-st) (solve prog new-db new-st)]
+    [(db-state new-db new-st) (solve prog new-db new-st)]
     ['inconsistent ; triggers a backtrack
      (backtrack prog stack)]
     [#f
      ; if we could not deduce, we instead try to choose
      (match (choose (logic-choose-rules prog) db stack)
-       [(cons new-db new-st) (solve prog new-db new-st)]
+       [(db-state new-db new-st) (solve prog new-db new-st)]
        ['inconsistent ; triggers a backtrack
         (backtrack prog stack)]
        [#f
         ; if no new deductions or choices are left to be made, we are
         ; saturated and have reached a solution!
-        (cons db stack)])]))
+        (db-state db stack)])]))
 
 ;; backtrack : Logic SearchStack -> SolutionResult
 ;; Backtrack from the given search state and find a new solution to the given
@@ -215,17 +220,17 @@
             (let ([new-fact (rule-frag->fact/choose conclusion idx-to-try)]
                   [new-stack (update-stack stack idx-to-try)])
               (if (consistent? current-db new-fact)
-                  (solve prog (cons new-fact current-db) new-stack)
+                  (solve prog (db-cons new-fact current-db) new-stack)
                   ; backtrack, but make the next choice
                   (backtrack prog new-stack)))
             ; if we ran out of choices, then pop off the stack
             (backtrack prog (rest stack))))))
 
 ;; pick-and-fire-rule : [Rule Database SearchStack -> ConsistencyResult]
-;;                     [ListOf Rule]
-;;                     Database
-;;                     SearchStack
-;;                     -> ConsistencyResult
+;;                      [ListOf Rule]
+;;                      Database
+;;                      SearchStack
+;;                      -> ConsistencyResult
 ;; abstracts the differences between deduction and choice
 ;; finds the first rule which fires and fires it, using the supplied
 ;; function. Returns #f if nothing fires and 'inconsistent if inconsistency
@@ -245,14 +250,14 @@
   ;; is-good-subst? : Substitution -> Bool
   ;; in this context, a substitution is "good" if it lets us deduce a new fact
   (define (is-good-subst? subst)
-    (not (member (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
+    (not (db-has? (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
 
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst
      (define new-fact (rule-frag->fact (ground (rule-conclusion rule) subst)))
      (if (consistent? db new-fact)
-         (cons (cons new-fact db) stack)
+         (db-state (db-cons new-fact db) stack)
          'inconsistent)]))
 
 ;; choose-with-rule : Rule Database SearchStack -> ConsistencyResult
@@ -279,7 +284,7 @@
      (define new-state (search-state db new-conc (set 0)))
      (define new-fact (rule-frag->fact/choose new-conc 0))
      (if (consistent? db new-fact)
-         (cons (cons new-fact db) (cons new-state stack))
+         (db-state (db-cons new-fact db) (cons new-state stack))
          'inconsistent)]))
 
 ;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
@@ -317,21 +322,17 @@
      ; which will "backtrack" AKA try again with remaining candidates
      (and (is-good-subst? current-subst) current-subst)]
     [(cons p prems)
+     ;; try-ground : Database -> [Maybe Substitution]
      (define (try-ground candidates)
-       (match candidates
-         ; we have no more facts that work, so this substitution
-         ; is wrong, we backtrack
-         ['() #f]
-         [(cons f facts)
-          ; we try to instantiate the first fact as variable
-          ; assignments, and recur until something (or nothing) works
-          (define new-subst (update-subst current-subst p f))
-          (match (inst-premises prems new-subst db is-good-subst?)
-            [#f (try-ground facts)]
-            [the-good-subst the-good-subst])]))
+       (if (db-empty? candidates) #f
+           (let ([new-subst
+                  (update-subst current-subst p (db-first candidates))])
+             (match (inst-premises prems new-subst db is-good-subst?)
+               [#f (try-ground (db-rest candidates))]
+               [the-good-subst the-good-subst]))))
      (try-ground (find-facts db p current-subst))]))
 
-;; find-facts : Database OpenFact Substitution -> [ListOf Fact]
+;; find-facts : Database OpenFact Substitution -> Database
 ;; Get a list of facts from the database that "look like" the given open fact.
 ;; A fact "looks like" an open fact if it has the same relation symbol, and
 ;; all non-variable positions have equal values.
@@ -354,7 +355,7 @@
                   (none? (fact-value fact)))
              (similar? (fact-value open) (fact-value fact)))))
   
-  (filter looks-like? db))
+  (db-filter looks-like? db))
 
 ;; update-subst : Substitution OpenFact Fact -> Substitution
 ;; PRECONDITION: f "looks like" open, as defined by `looks-like?`.
@@ -375,11 +376,11 @@
                      (fact-terms open)
                      (fact-terms f))))
 
-;; consistent? : Database Fact -> Bool
+;; consistent? : Database Fact -> Boolean
 ;; Determine if the given fact is consistent with the database of already
 ;; known facts.
 (define (consistent? db f)
-  ;; fact-consistent? : Fact -> Bool
+  ;; fact-consistent? : Fact -> Boolean
   ;; Determine if the known fact is consistent with the closed over fact f.
   ;; Two facts are consistent if they do not map the same attribute to
   ;; different values.
@@ -388,7 +389,7 @@
               (equal? (fact-terms f) (fact-terms known))
               (not (equal? (fact-value f) (fact-value known))))))
   
-  (andmap fact-consistent? db))
+  (db-andmap fact-consistent? db))
 
 ;; ground : RuleFragment Substitution -> ClosedRuleFragment
 ;; PRECONDITION: subst must contain assignments for all variables that appear
@@ -422,6 +423,40 @@
              (rule-frag-terms frag)
              (list-ref (rule-frag-choices frag) idx)))
 
+;; Database functions are provided for modularity and for ease of switching
+;; the data representation for databases later.
+
+;; db-cons : Fact Database -> Database
+(define (db-cons f db) (set-add db f))
+
+;; db-has? : Fact Database -> Boolean
+;; Determine if the database contains the given fact.
+(define (db-has? f db) (set-member? db f))
+
+;; db-empty? : Database -> Boolean
+(define db-empty? set-empty?)
+
+;; db-first : Database -> Fact
+;; Return an unspecified fact from the database. Raises an error if the
+;; database is empty.
+(define db-first set-first)
+
+;; db-rest : Database -> Database
+;; Return the given database with `(db-first db)` removed. Raises an
+;; error if the database is empty.
+(define db-rest set-rest)
+
+;; db-filter : [Fact -> Boolean] Database -> Database
+(define (db-filter pred? db)
+  ; why does racket not have this?
+  (for/set ([fact db]
+            #:when (pred? fact))
+    fact))
+
+;; db-andmap : [Fact -> Boolean] Database -> Boolean
+(define (db-andmap pred? db)
+  (for/and ([fact db]) (pred? fact)))
+
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.
 ;; Raises an error if the number of arguments provided does not match the
@@ -451,4 +486,4 @@
                        (list (rule (rule-frag 'foo '(1) '(a)) '()))
                        '())
                       ))
-   (list (list (fact 'foo '(1) 'a)))))
+   (list (solution (set (fact 'foo '(1) 'a))))))

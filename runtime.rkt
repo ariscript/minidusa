@@ -10,7 +10,8 @@
          logic
          all)
 
-(require racket/stream "utils.rkt")
+(require racket/stream
+         "database.rkt")
 
 ;; A [Maybe X] is one of:
 ;; - #f
@@ -35,18 +36,21 @@
 ;; CURRENTLY, it seems as if we will need to be able to compare for equality
 ;; to compare attributes and determine when conflicts arise
 
-;; A Fact is a (fact Symbol [ListOf Datum] [Option Datum]).
+;; A Relation is one of
+;; - Symbol, representing relation symbols, or
+;; - Procedure, representing an imported relation
+
+;; A Fact is a (fact Relation [ListOf Datum] [Option Datum]).
 ;; It represents a known fact (either given or deduced) in the database.
+;; Currently, stored facts will always have Symbols, since imported
+;; relations are computed repeatedly and not cached.
 
 ;; name + terms = "attribute"
 ;; if we need to use attributes without values, we can abstract
-(struct fact [name terms value] #:transparent)
+(struct fact [rel terms value] #:transparent)
 
-(define (make-fact name terms [value NONE])
-  (fact name terms value))
-
-;; A Database is a [SetOf Fact]
-;; TODO: make this something with more structure for faster lookup
+(define (make-fact rel terms [value NONE])
+  (fact rel terms value))
 
 ;; A Variable is a (variable Symbol)
 (struct variable [name] #:transparent)
@@ -93,6 +97,7 @@
 ;; A Solution is an opaque object that can be queried for propositions.
 
 ;; For now (naively), a Solution is a (solution Database)
+;; (where Database is documented in "database.rkt", which we require)
 
 (struct solution [database] #:transparent)
 
@@ -162,7 +167,7 @@
   (define (collect-backtracked stack)
     (result->stream (backtrack prog stack)))
   
-  (result->stream (solve prog (set) '())))
+  (result->stream (solve prog (db-of) '())))
 
 ;; solve : Logic Database SearchStack -> SolutionResult
 ;; Given a search state and a database of currently known facts, obtain a
@@ -250,12 +255,12 @@
   ;; is-good-subst? : Substitution -> Bool
   ;; in this context, a substitution is "good" if it lets us deduce a new fact
   (define (is-good-subst? subst)
-    (not (db-has? (rule-frag->fact (ground (rule-conclusion rule) subst)) db)))
+    (not (db-has? (rule-frag->fact (ground subst (rule-conclusion rule))) db)))
 
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst
-     (define new-fact (rule-frag->fact (ground (rule-conclusion rule) subst)))
+     (define new-fact (rule-frag->fact (ground subst (rule-conclusion rule))))
      (if (consistent? db new-fact)
          (db-state (db-cons new-fact db) stack)
          'inconsistent)]))
@@ -270,7 +275,7 @@
   ;; (good substitutions will let us make new choices or find inconsistencies)
   (define (is-good-subst? subst)
     ; TODO: optimize by filtering out inconsistent choices
-    (define grounded-conclusion (ground (rule-conclusion rule) subst))
+    (define grounded-conclusion (ground subst (rule-conclusion rule)))
     (andmap (lambda (state)
               (not (equal? (search-state-conclusion state)
                            grounded-conclusion)))
@@ -279,7 +284,7 @@
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
     [#f #f]
     [subst
-     (define new-conc (ground (rule-conclusion rule) subst))
+     (define new-conc (ground subst (rule-conclusion rule)))
      ; we initially pick the 0-th choice
      (define new-state (search-state db new-conc (set 0)))
      (define new-fact (rule-frag->fact/choose new-conc 0))
@@ -334,8 +339,12 @@
 
 ;; find-facts : Database OpenFact Substitution -> Database
 ;; Get a list of facts from the database that "look like" the given open fact.
-;; A fact "looks like" an open fact if it has the same relation symbol, and
-;; all non-variable positions have equal values.
+;; This is like a "sub-database". We think of the database as containing facts
+;; associating inputs to procedure outputs for imported procedures
+;;
+;; A fact `f` "looks like" an open fact `open` if there exists an extension
+;; `subst'` to the given substitution `subst` such that `f` is `subst'(open)`,
+;; which represents grounding the open fact using subst'
 (define (find-facts db open subst)
   ;; similar? : Term Datum -> Boolean
   (define (similar? term datum)
@@ -347,7 +356,7 @@
   
   ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
-    (and (symbol=? (fact-name open) (fact-name fact))
+    (and (symbol=? (fact-rel open) (fact-rel fact))
          (andmap similar?
                  (fact-terms open)
                  (fact-terms fact))
@@ -355,7 +364,23 @@
                   (none? (fact-value fact)))
              (similar? (fact-value open) (fact-value fact)))))
   
-  (db-filter looks-like? db))
+  (if (symbol? (fact-rel open))
+      (db-filter looks-like? db)
+      ; otherwise, we have a proc, which we run on the result of closing terms
+      ; (which will always be fully groundable, by our static checks)
+      (let* ([substituted (apply-subst subst open)]
+             [proc-result (apply (fact-rel substituted)
+                                 (fact-terms substituted))]
+             [the-singleton-db
+              (db-cons (struct-copy fact substituted [value proc-result])
+                       (db-of))]
+             [var-or-known-val (fact-value substituted)])
+        ; the proc-result should agree with the value, if it is known
+        ; always "looks like" if we have a variable in that position
+        (if (or (variable? var-or-known-val)
+                (equal? var-or-known-val proc-result))
+            the-singleton-db
+            (db-of)))))
 
 ;; update-subst : Substitution OpenFact Fact -> Substitution
 ;; PRECONDITION: f "looks like" open, as defined by `looks-like?`.
@@ -385,23 +410,39 @@
   ;; Two facts are consistent if they do not map the same attribute to
   ;; different values.
   (define (fact-consistent? known)
-    (not (and (equal? (fact-name f) (fact-name known))
+    (not (and (equal? (fact-rel f) (fact-rel known))
               (equal? (fact-terms f) (fact-terms known))
               (not (equal? (fact-value f) (fact-value known))))))
   
   (db-andmap fact-consistent? db))
 
-;; ground : RuleFragment Substitution -> ClosedRuleFragment
+;; make-term-grounder : Subst -> [Term -> Term]
+;; Returns a function which substitutes using subst, which will bring
+;; variables to whatever subst maps them to, if it has a binding for it
+(define (make-term-grounder subst)
+  (lambda (t)
+    (match t
+      [(variable name)
+       #:when (hash-has-key? subst name)
+       (hash-ref subst name)]
+      [_ t])))
+
+;; apply-subst : Subst OpenFact -> OpenFact
+;; Substitutes as many of the variables in open as possible.
+;; If the substitution contains all of the free variables of OpenFact,
+;; then the result will be a Fact
+(define (apply-subst subst open)
+  (define ground-term (make-term-grounder subst))
+  (fact (fact-rel open)
+        (map ground-term (fact-terms open))
+        (ground-term (fact-value open))))
+
+;; ground : Substitution RuleFragment -> ClosedRuleFragment
 ;; PRECONDITION: subst must contain assignments for all variables that appear
 ;; which will always be the case, due to static checks in the parser/compiler.
 ;; Closes off the (possibly open) RuleFragment using the given substitution
-(define (ground open subst)
-  ;; ground-term : Term -> Datum
-  (define (ground-term t)
-    (match t
-      [(variable name) (hash-ref subst name)]
-      [_ t]))
-  
+(define (ground subst open)
+  (define ground-term (make-term-grounder subst))
   (rule-frag (rule-frag-name open)
              (map ground-term (rule-frag-terms open))
              (map ground-term (rule-frag-choices open))))
@@ -423,39 +464,6 @@
              (rule-frag-terms frag)
              (list-ref (rule-frag-choices frag) idx)))
 
-;; Database functions are provided for modularity and for ease of switching
-;; the data representation for databases later.
-
-;; db-cons : Fact Database -> Database
-(define (db-cons f db) (set-add db f))
-
-;; db-has? : Fact Database -> Boolean
-;; Determine if the database contains the given fact.
-(define (db-has? f db) (set-member? db f))
-
-;; db-empty? : Database -> Boolean
-(define db-empty? set-empty?)
-
-;; db-first : Database -> Fact
-;; Return an unspecified fact from the database. Raises an error if the
-;; database is empty.
-(define db-first set-first)
-
-;; db-rest : Database -> Database
-;; Return the given database with `(db-first db)` removed. Raises an
-;; error if the database is empty.
-(define db-rest set-rest)
-
-;; db-filter : [Fact -> Boolean] Database -> Database
-(define (db-filter pred? db)
-  ; why does racket not have this?
-  (for/set ([fact db]
-            #:when (pred? fact))
-    fact))
-
-;; db-andmap : [Fact -> Boolean] Database -> Boolean
-(define (db-andmap pred? db)
-  (for/and ([fact db]) (pred? fact)))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given proposition exists in this solution.
@@ -484,6 +492,28 @@
   (check-equal?
    (stream->list (all (logic
                        (list (rule (rule-frag 'foo '(1) '(a)) '()))
-                       '())
-                      ))
-   (list (solution (set (fact 'foo '(1) 'a))))))
+                       '())))
+   (list (solution (set (fact 'foo '(1) 'a)))))
+
+  ;; we can run imported relations
+  (check-equal?
+   (stream->list (all (logic
+                       (list (rule (rule-frag 'foo '() '())
+                                   (list (fact add1 '(0) 1))))
+                       '())))
+   (list (solution (db-of (make-fact 'foo '())))))
+
+  (check-equal?
+   (stream->list (all (logic
+                       (list (rule (rule-frag 'foo '() '())
+                                   (list (fact * '(0 1 2) 1))))
+                       '())))
+   (list (solution (db-of))))
+
+  ;; example where we bind a variable based on an import
+  (check-equal?
+   (stream->list (all (logic
+                       (list (rule (rule-frag 'foo '() (list (variable 'X)))
+                                   (list (fact + '(1 2 3 4) (variable 'X)))))
+                       '())))
+   (list (solution (db-of (make-fact 'foo '() 10))))))

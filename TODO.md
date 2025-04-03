@@ -1,8 +1,8 @@
 SYNTAX RELATED:
 - [ ] Experiment with removing nesting
-- [ ] Static check for arity
+- [x] Static check for arity
   - [ ] Also throw in reserved keyword check
-  - [ ] This may depend on if we have syntax in our variables
+  - [x] This may depend on if we have syntax in our variables
         instead of just symbols. What is the right equality?
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
@@ -16,8 +16,8 @@ RUNTIME RELATED:
 - [x] Implement `choose`
   - [x] Decide whether singleton choice rules are choose or deduce
         (which may involve tweaking the current solver)
-- [ ] **Builtin support**
-  - [ ] This also requires making changes to the syntax too
+- [x] **Builtin support**
+  - [x] This also requires making changes to the syntax too
 - [ ] How much work to get this working with open rules?
 - [ ] Port over Dusa's test suite (once we support more things...)
 
@@ -29,13 +29,21 @@ CODE IMPROVEMENTS:
   - [ ] At the very least we can make it so it doesn't get printed
 - [ ] Maybe having an `attribute` struct would be better
 - [ ] Testing infrastructure improvements
+- [ ] Lots of duplication when compiling "attributes" (4x dupe)
 
 QUESTIONS FOR US:
 - [ ] Is it useful to know what is a binding vs a reference in our AST?
 - [ ] Reconsider `fact` and `make-fact` stuff?
 
 QUESTIONS FOR OH:
-- [ ] Binding structure for built-ins: how can we check what is a built-in
+- [ ] (Re)exporting some but not all scopes
+  - [ ] Specifically, we want `rel-var` scopes across rules, but not `logic-var`s
+  - [ ] Our only idea was to inline `attribute`, which we think will work
+  - [ ] This _needs_ to work before any of the symbol table stuff does
+- [ ] How do we not thread around the symbol tables in annoying ways
+- [ ] `rel-var may not be used as a racket expression` error
+
+- [x] Binding structure for built-ins: how can we check what is a built-in
 - [ ] Relation symbol freshness
   - [ ] How would we compare at runtime with syntax?
   - [ ] We don't want to have fresh stuff exposed to user

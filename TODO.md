@@ -1,9 +1,12 @@
 SYNTAX RELATED:
-- [ ] Experiment with removing nesting
 - [x] Static check for arity
   - [ ] Also throw in reserved keyword check
   - [x] This may depend on if we have syntax in our variables
         instead of just symbols. What is the right equality?
+- [ ] Change over to using `id` for relation variables
+- [ ] `#demand` and `#forbid` with `gensym`
+  - Maybe we should slightly expand the syntax-spec
+  - Layer on top which expands to that other syntax-spec stuff
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
 - [ ] Singletons in `choice` should not need `choice`
@@ -11,6 +14,10 @@ SYNTAX RELATED:
   - [ ] Depends on freshness of relation symbols
 - [ ] Nested symbols -> flatten
 - [ ] Better custom error messages
+
+COMPILER RELATED:
+- [ ] Change compilers to use normal tables
+  - [ ] Also, we can use `parameter`s to avoid threading
 
 RUNTIME RELATED:
 - [x] Implement `choose`
@@ -27,27 +34,19 @@ CODE IMPROVEMENTS:
   - [x] Database abstraction to enable replacing with tries?
 - [ ] `NONE` getting exposed to end user in solutions
   - [ ] At the very least we can make it so it doesn't get printed
+  - [ ] Make sure that we don't have generated symbols either
 - [ ] Maybe having an `attribute` struct would be better
+  - [ ] Currently, lots of duplication when compiling attributes
 - [ ] Testing infrastructure improvements
-- [ ] Lots of duplication when compiling "attributes" (4x dupe)
 
 QUESTIONS FOR US:
 - [ ] Is it useful to know what is a binding vs a reference in our AST?
 - [ ] Reconsider `fact` and `make-fact` stuff?
 
 QUESTIONS FOR OH:
-- [ ] (Re)exporting some but not all scopes
-  - [ ] Specifically, we want `rel-var` scopes across rules, but not `logic-var`s
-  - [ ] Our only idea was to inline `attribute`, which we think will work
-  - [ ] This _needs_ to work before any of the symbol table stuff does
-- [ ] How do we not thread around the symbol tables in annoying ways
-- [ ] `rel-var may not be used as a racket expression` error
-
+- [x] How do we not thread around the symbol tables in annoying ways
+- [ ] Possible to get the demo code?
 - [x] Binding structure for built-ins: how can we check what is a built-in
-- [ ] Relation symbol freshness
-  - [ ] How would we compare at runtime with syntax?
-  - [ ] We don't want to have fresh stuff exposed to user
-  - [ ] Should we even do this?
 - [ ] `_` logic variables
   - [ ] More generally, is there any way for our compiler to generate
         fresh logic variables?
@@ -55,7 +54,6 @@ QUESTIONS FOR OH:
   - [ ] Testing expansion vs runtime vs etc
   - [ ] Also keep in mind we may want to export runtime functions
         and the AST separately from each other?
-- [ ] What is `#%`? I think just idiom for internal stuff
 - [ ] Is there any more “compilation” that we could do, besides to AST?
 
 QUESTIONS (ONE DAY):

@@ -1,23 +1,23 @@
 SYNTAX RELATED:
 - [x] Static check for arity
-  - [ ] Also throw in reserved keyword check
+  - [x] Also throw in reserved keyword check
   - [x] This may depend on if we have syntax in our variables
         instead of just symbols. What is the right equality?
-- [ ] Change over to using `id` for relation variables
+- [x] Change over to using `id` for relation variables
 - [ ] `#demand` and `#forbid` with `gensym`
   - Maybe we should slightly expand the syntax-spec
   - Layer on top which expands to that other syntax-spec stuff
+  - This is where we implement the name hiding stuff
+- [ ] Concrete syntax
+  - [ ] Infix `is`?
+  - [ ] Maybe make some singletons not need parens? idk
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
-- [ ] Singletons in `choice` should not need `choice`
-- [ ] `demand` and `forbid` macros
-  - [ ] Depends on freshness of relation symbols
-- [ ] Nested symbols -> flatten
-- [ ] Better custom error messages
+- [ ] Nested symbols -> expand with extra premises
 
 COMPILER RELATED:
-- [ ] Change compilers to use normal tables
-  - [ ] Also, we can use `parameter`s to avoid threading
+- [x] Change compilers to use normal tables
+  - [x] Also, we can use `parameter`s to avoid threading
 
 RUNTIME RELATED:
 - [x] Implement `choose`

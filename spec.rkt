@@ -21,9 +21,9 @@
    (logic d:decl ...+)
    (compile-logic #'() #'(d ...)))
 
- ;; (logic/import [<imp> ...+] <decl> ...+)
+ ;; (logic/importing [<imp> ...+] <decl> ...+)
  (host-interface/expression
-   (logic/import [i:imp ...+] d:decl ...+)
+   (logic/importing [i:imp ...+] d:decl ...+)
    (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
@@ -129,6 +129,8 @@
                                   (rt:fact 'baz '()))))
              '()))
 
+  ;; some error cases
+  
   (check-exn
    #rx"cannot bind variables in conclusions of declarations"
    (lambda ()
@@ -136,11 +138,21 @@
       (logic (foo a)))))
 
   (check-exn
+   #rx"1 argument\\(s\\) but got 2"
+   (lambda ()
+     (convert-compile-time-error
+      (logic
+       (foo 1)
+       (foo 1 2)))))
+
+  (check-exn
    #rx"" ;; the actual error message is bad, we don't want to specify it
    (lambda ()
      (convert-compile-time-error
       (logic (is (bar 10))))))
 
+  ;; larger examples
+  
   (check-equal?
    (logic
     (parent 'alice 'bob)
@@ -181,4 +193,34 @@
       (rt:rule-frag 'terrain (list (rt:variable 'R)) '(forest ocean))
       (list
        (rt:fact 'adjacent (list (rt:variable 'R) (rt:variable 'S)))
-       (rt:fact 'terrain (list (rt:variable 'S)) 'ocean)))))))
+       (rt:fact 'terrain (list (rt:variable 'S)) 'ocean))))))
+
+  ;; importing tests
+  
+  (check-equal?
+   (logic/importing ([a add1])
+                    ((foo) :- (is (a 0) 1)))
+   (rt:logic
+    (list (rt:rule (rt:rule-frag 'foo '() '())
+                   (list (rt:fact add1 '(0) 1))))
+    '()))
+
+  (check-equal?
+   (logic/importing ([p +])
+                    ((foo) :- (is (p 1 2) 3))
+                    ((bar X) :- (is (p 1 2 3) X)))
+   (rt:logic
+    (list (rt:rule (rt:rule-frag 'foo '() '())
+                   (list (rt:fact + '(1 2) 3)))
+          (rt:rule (rt:rule-frag 'bar (list (rt:variable 'X)) '())
+                   (list (rt:fact + '(1 2 3) (rt:variable 'X)))))
+    '()))
+
+  (check-equal?
+   (logic/importing [add1]
+                    ((foo) :- (is (add1 0) 1)))
+   (rt:logic
+    (list (rt:rule (rt:rule-frag 'foo '() '())
+                   (list (rt:fact add1 '(0) 1))))
+    '()))
+  )

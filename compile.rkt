@@ -136,17 +136,18 @@
 ;; otherwise checks the arity (if seen before, or sets arity otherwise)
 ;; and returns as the runtime representation of the name
 (define (compile-rel-id arities imports rel-id arity)
-  (if (set-member? imports rel-id)
+  (if (set-member? imports (syntax->datum rel-id))
       ; sets to arity if missing from the table
       rel-id
       (let ([expected-arity (hash-ref! arities (syntax->datum rel-id) arity)])
         (unless (= arity expected-arity)
           (raise-syntax-error
            #f
-           (format "arity mismatch: relation ~a expects arity ~a but got ~a"
-                   (syntax->datum rel-id)
-                   expected-arity
-                   arity)
+           (format
+            "arity mismatch: relation ~a expects ~a argument(s) but got ~a"
+            (syntax->datum rel-id)
+            expected-arity
+            arity)
            rel-id))
         #`'#,rel-id)))
 

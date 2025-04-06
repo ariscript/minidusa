@@ -146,10 +146,17 @@
        (foo 1 2)))))
 
   (check-exn
-   #rx"" ;; the actual error message is bad, we don't want to specify it
+   ; this error message isn't good, but it's from syntax-spec
+   #rx""
    (lambda ()
      (convert-compile-time-error
       (logic (is (bar 10))))))
+
+  (check-exn
+   #rx"use of reserved name"
+   (lambda ()
+     (convert-compile-time-error
+      (logic (is 10)))))
 
   ;; larger examples
   

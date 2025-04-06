@@ -131,21 +131,28 @@
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
+(define RESERVED-NAMES '(is :- choice))
+
 ;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;
 ;; otherwise checks the arity (if seen before, or sets arity otherwise)
 ;; and returns as the runtime representation of the name
 (define (compile-rel-id arities imports rel-id arity)
-  (if (set-member? imports (syntax->datum rel-id))
-      ; sets to arity if missing from the table
+  (define rel-sym (syntax->datum rel-id))
+  
+  (when (member rel-sym RESERVED-NAMES)
+    (raise-syntax-error #f "use of reserved name" rel-id))
+  
+  (if (set-member? imports rel-sym)
+      ; sets to arity if missing from the table -> will be equal
       rel-id
-      (let ([expected-arity (hash-ref! arities (syntax->datum rel-id) arity)])
+      (let ([expected-arity (hash-ref! arities rel-sym arity)])
         (unless (= arity expected-arity)
           (raise-syntax-error
            #f
            (format
             "arity mismatch: relation ~a expects ~a argument(s) but got ~a"
-            (syntax->datum rel-id)
+            rel-sym
             expected-arity
             arity)
            rel-id))

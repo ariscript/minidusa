@@ -14,7 +14,6 @@
 
 (syntax-spec
  (binding-class logic-var)
- (binding-class rel-var)
  #;(extension-class logic-macro #:binding-space minidusa)
 
  ;; (logic <decl> ...+)
@@ -22,19 +21,15 @@
    (logic d:decl ...+)
    (compile-logic #'() #'(d ...)))
 
- ;; (logic/import [<import> ...+] <decl> ...+)
+ ;; (logic/import [<imp> ...+] <decl> ...+)
  (host-interface/expression
-   (logic/import [i:import ...+] d:decl ...+)
-   #:binding (scope (import i) ... d ...)
+   (logic/import [i:imp ...+] d:decl ...+)
    (compile-logic #'(i ...) #'(d ...)))
 
- ;; <import> ::= x:racket-var
- ;;            | [x:rel-var e:racket-expr]
- (nonterminal/exporting import
-   [x:rel-var e:racket-expr]
-   ; perplexing error message when e is the same id as x
-   ; problematic because that's literally what the shorthand below does lol
-   #:binding (export x)
+ ;; <imp> ::= x:racket-var
+ ;;         | [x:id e:racket-expr]
+ (nonterminal imp
+   [x:id e:racket-expr]
 
    ;; if we have a racket-var, that is shorthand for binding it to
    ;; a rel-var with the same name, so we expand accordingly
@@ -71,24 +66,9 @@
 
  ;; <attribute> ::= (<ID> <logic-term> ...)
  (nonterminal/exporting attribute
-   (name:rel-var t:logic-term ...)
-   #:binding [(re-export t) ...
-              ; for now, no arrows at all to shut it up
-              (scope (bind name))])
+   (name:id t:logic-term ...)
+   #:binding [(re-export t) ...])
 
- ;; <pre-rel-var> ::= <ID>
- ;; this is just a trick to get better IDE support
- #;(nonterminal/exporting pre-rel-var
-     (~> r:id
-         (if (lookup #'r (binding-class-predicate rel-var))
-             #'(#%rel-ref r)     ; if r has been bound as a logic-var already
-             #'(#%rel-bind r)))
-
-     (#%rel-bind r:rel-var)
-     #:binding (export r)
-   
-     (#%rel-ref r:rel-var))
- 
  ;; <logic-term> ::= <ID>
  ;;                | <DATUM>
  (nonterminal/exporting logic-term

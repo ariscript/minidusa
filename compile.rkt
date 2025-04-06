@@ -48,13 +48,15 @@
 ;; this is the old compile-time function
 ;; ImportsSyntax LogicSyntax -> RacketSyntax
 (define (compile-logic imports-stx logic-stx)
-  (define rel-arities (local-symbol-table))
-  (define imported-rel-vars (local-symbol-set))
+  (define rel-arities (make-hash))
+  (define imported-rel-vars (mutable-set))
   ; add all imported symbols; later we use this to compile attibutes
   (for ([stx-pair (syntax->list imports-stx)])
     (syntax-parse stx-pair
-      [[rel-var _]
-       (symbol-set-add! imported-rel-vars (attribute rel-var))]))
+      [[rel-id _]
+       ; we want to put the symbols in our symbol table, not the identifiers,
+       ; otherwise we will not have the right notion of element equality
+       (set-add! imported-rel-vars (syntax->datum #'rel-id))]))
 
   (define body
     (let ([compile-decl ((curry compile-decl) rel-arities imported-rel-vars)])
@@ -102,57 +104,51 @@
 (define (compile-conc arities imports conc-stx)
   ;; shadowing to disallow compiling terms with binding occurrences
   (let ([compile-term ((curry compile-term) #:can-bind #f)]
-        [compile-rel-var ((curry compile-rel-var) arities imports)])
+        [compile-rel-id ((curry compile-rel-id) arities imports)])
     (syntax-parse conc-stx
       #:datum-literals (is choice)
       [(is (name t ...) (choice ch ...+))
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with (comp-ch ...) (map compile-term (attribute ch))
-       #:with rel-var-comped (compile-rel-var #'name (length (attribute t)))
+       #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #'(rt:rule-frag rel-var-comped (list comp-t ...) (list comp-ch ...))]
       [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
-       #:with rel-var-comped (compile-rel-var #'name (length (attribute t)))
+       #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #'(rt:rule-frag rel-var-comped (list comp-t ...) '())])))
 
 ;; MutSymbolTable MutSymbolSet PremiseSyntax -> RacketSyntax
 (define (compile-prem arities imports prem-stx)
-  (let ([compile-rel-var ((curry compile-rel-var) arities imports)])
+  (let ([compile-rel-id ((curry compile-rel-id) arities imports)])
     (syntax-parse prem-stx
       #:datum-literals (is)
       [(is (name t ...) ch)
        #:with (comp-t ...) (map compile-term (attribute t))
-       #:with rel-var-comped (compile-rel-var #'name (length (attribute t)))
+       #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #`(rt:fact rel-var-comped (list comp-t ...) #,(compile-term #'ch))]
       [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
-       #:with rel-var-comped (compile-rel-var #'name (length (attribute t)))
+       #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
-;; MutSymbolTable MutSymbolSet RelVarSyntax Nat -> RacketSyntax
+;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;
 ;; otherwise checks the arity (if seen before, or sets arity otherwise)
 ;; and returns as the runtime representation of the name
-(define (compile-rel-var arities imports rv arity)
-  (cond
-    [(symbol-set-member? imports rv) rv]
-    [(symbol-table-has-key? arities rv)
-     (define expected-arity (symbol-table-ref arities rv))
-     (unless (= arity expected-arity)
-       (raise-syntax-error
-        #f
-        (format "arity mismatch: relation ~a expects arity ~a but got ~a"
-                rv
-                expected-arity
-                arity)
-        rv))
-     ; TODO: this is the spot where we could syntax-quote this instead
-     ; my face when #`#'#,    (#_#)b
-     ; ALSO: we can check to make sure that these aren't evil reserved ids
-     #`'#,rv]
-    [else
-     (symbol-table-set! arities rv arity)
-     #`'#,rv]))
+(define (compile-rel-id arities imports rel-id arity)
+  (if (set-member? imports rel-id)
+      ; sets to arity if missing from the table
+      rel-id
+      (let ([expected-arity (hash-ref! arities (syntax->datum rel-id) arity)])
+        (unless (= arity expected-arity)
+          (raise-syntax-error
+           #f
+           (format "arity mismatch: relation ~a expects arity ~a but got ~a"
+                   (syntax->datum rel-id)
+                   expected-arity
+                   arity)
+           rel-id))
+        #`'#,rel-id)))
 
 ;; TermSyntax -> RacketSyntax
 (define (compile-term term-stx #:can-bind [can-bind #t])

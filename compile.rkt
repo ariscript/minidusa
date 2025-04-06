@@ -64,10 +64,10 @@
         [(d ...+)
          ;; like define/syntax-parse, but shorter
          #:with (deduce-rule ...)
-         (map compile-decl (filter (negate is-choose?) (attribute d)))
+         (flatten (map compile-decl (filter (negate is-choose?) (attribute d))))
 
          #:with (choose-rule ...)
-         (map compile-decl (filter is-choose? (attribute d)))
+         (flatten (map compile-decl (filter is-choose? (attribute d))))
      
          #'(rt:logic (list deduce-rule ...)
                      (list choose-rule ...))])))
@@ -85,53 +85,78 @@
     [((is _ (choice _ _ ...+)) :- _ ...+) #t]  ; rule
     [_ #f]))
 
-;; MutSymbolTable MutSymbolSet DeclSyntax -> RacketSyntax
+;; MutSymbolTable MutSymbolSet DeclSyntax -> [ListOf RacketSyntax]
+;; This returns a list so that we can expand to multiple decls in the case of
+;; a `decls` block.
 (define (compile-decl arities imports decl-stx)
   ; partial application to thread around references to the symbol tables
-  (let ([compile-conc ((curry compile-conc) arities imports)])
+  (let ([compile-conc ((curry compile-conc) arities imports)]
+        [compile-decl ((curry compile-decl) arities imports)])
     (syntax-parse decl-stx
-      #:datum-literals (:-)
+      #:datum-literals (decls :-)
+      [(decls d ...) (flatten (map compile-decl (attribute d)))]
       [(conc :- prems ...+)
        #:with (prem ...)
        (map ((curry compile-prem) arities imports) (attribute prems))
-       #`(rt:rule #,(compile-conc #'conc) (list prem ...))]
+       (list #`(rt:rule #,(compile-conc #'conc) (list prem ...)))]
       [conc
-       #`(rt:rule #,(compile-conc #'conc) '())])))
+       (list #`(rt:rule #,(compile-conc #'conc) '()))])))
 
 ;; MutSymbolTable MutSymbolSet ConclusionSyntax -> RacketSyntax
 ;; throws a compile-time error when there is a binding
 ;; occurrence of a variable in the conclusion, which is disallowed
 (define (compile-conc arities imports conc-stx)
   ;; shadowing to disallow compiling terms with binding occurrences
-  (let ([compile-term ((curry compile-term) #:can-bind #f)]
-        [compile-rel-id ((curry compile-rel-id) arities imports)])
+  (let ([compile-term ((curry compile-term)
+                       #:forbid-binds "cannot bind variables in conclusions")]
+        [compile-rel-id ((curry compile-rel-id) arities imports)]
+        [raise-if-imported!
+         (lambda (name)
+           (when (set-member? imports (syntax->datum name))
+             (raise-syntax-error
+              #f
+              "imported relations cannot appear in conclusions"
+              name)))])
     (syntax-parse conc-stx
       #:datum-literals (is choice)
       [(is (name t ...) (choice ch ...+))
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with (comp-ch ...) (map compile-term (attribute ch))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
+       (raise-if-imported! #'name)
        #'(rt:rule-frag rel-var-comped (list comp-t ...) (list comp-ch ...))]
       [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
+       (raise-if-imported! #'name)
        #'(rt:rule-frag rel-var-comped (list comp-t ...) '())])))
 
 ;; MutSymbolTable MutSymbolSet PremiseSyntax -> RacketSyntax
 (define (compile-prem arities imports prem-stx)
-  (let ([compile-rel-id ((curry compile-rel-id) arities imports)])
+  (let ([compile-rel-id ((curry compile-rel-id) arities imports)]
+        [compile-term-named
+         (lambda (name)
+           (curry compile-term
+                  #:forbid-binds
+                  (and (set-member? imports name)
+                       "cannot run imported relations backwards")))])
     (syntax-parse prem-stx
       #:datum-literals (is)
       [(is (name t ...) ch)
-       #:with (comp-t ...) (map compile-term (attribute t))
+       #:with (comp-t ...)
+       (map (compile-term-named (syntax->datum #'name)) (attribute t))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        #`(rt:fact rel-var-comped (list comp-t ...) #,(compile-term #'ch))]
       [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
+       (when (set-member? imports (syntax->datum #'name))
+         (raise-syntax-error #f
+                             "imported relations must be used with 'is'"
+                             #'name))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
-(define RESERVED-NAMES '(is :- choice))
+(define RESERVED-NAMES '(is :- choice decls))
 
 ;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;
@@ -159,15 +184,12 @@
         #`'#,rel-id)))
 
 ;; TermSyntax -> RacketSyntax
-(define (compile-term term-stx #:can-bind [can-bind #t])
+(define (compile-term term-stx #:forbid-binds [message #f])
   (syntax-parse term-stx
     #:datum-literals (#%bind #%ref)
     [(#%bind x)
-     (if can-bind
+     (if (not message)
          #'(rt:variable 'x)
-         (raise-syntax-error
-          #f
-          "cannot bind variables in conclusions of declarations"
-          #'x))]
+         (raise-syntax-error #f message #'x))]
     [(#%ref x) #'(rt:variable 'x)]
     [x #'x]))

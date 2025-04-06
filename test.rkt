@@ -162,3 +162,24 @@
  (list (rt:solution (db-of
                      (rt:fact 'foo '())
                      (rt:fact 'bar '(6))))))
+
+(check-equal?
+ (length (stream->list (rt:all
+                        (logic/importing
+                         ([s add1])
+                         (is (run 0) (choice 'stop 'go))
+                         ((is (run M) (choice 'stop 'go))
+                          :- (is (run N) 'go) (is (s N) M))
+
+                         ; forbid desugaring
+                         (is (ok) (choice #t))
+                         ((is (ok) (choice #f)) :- (is (run 10) 'go))))))
+ ; 11 solutions because 0-10 inclusive
+ 11)
+
+(check-equal?
+ (stream->list (rt:all (logic/importing [add1]
+                                        (foo 1)
+                                        ((bar) :- (foo X) (is (add1 X) 2)))))
+ (list (rt:solution (db-of (rt:fact 'foo '(1))
+                           (rt:fact 'bar '())))))

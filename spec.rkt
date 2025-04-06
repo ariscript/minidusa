@@ -14,17 +14,17 @@
 
 (syntax-spec
  (binding-class logic-var)
- #;(extension-class logic-macro #:binding-space minidusa)
+ (extension-class logic-macro #:binding-space minidusa)
 
  ;; (logic <decl> ...+)
  (host-interface/expression
-   (logic d:decl ...+)
-   (compile-logic #'() #'(d ...)))
+  (logic d:decl ...+)
+  (compile-logic #'() #'(d ...)))
 
  ;; (logic/importing [<imp> ...+] <decl> ...+)
  (host-interface/expression
-   (logic/importing [i:imp ...+] d:decl ...+)
-   (compile-logic #'(i ...) #'(d ...)))
+  (logic/importing [i:imp ...+] d:decl ...+)
+  (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
  ;;         | [x:id e:racket-expr]
@@ -38,9 +38,14 @@
  
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
+ ;;          | (decls <decl> ...)                 ; nested (for macros)
  (nonterminal decl
+   #:allow-extension logic-macro
+   
    (c:conclusion (~datum :-) p:premise ...+)
    #:binding (nest p ... c)
+
+   ((~datum decls) d:decl ...)
    
    c:conclusion)
 
@@ -90,6 +95,15 @@
    c:char)
  )
 
+#;(define-syntax logic
+    (lambda (stx)
+      (syntax-parse stx
+        [(_ (~or* (~seq #:import imports)
+                  (~seq))
+            ds ...)
+         #:with imps (or (attribute imports) #'())
+         #'(logic/importing imps ds ...)])))
+
 (module+ test
   (require rackunit
            syntax/macro-testing
@@ -132,7 +146,7 @@
   ;; some error cases
   
   (check-exn
-   #rx"cannot bind variables in conclusions of declarations"
+   #rx"cannot bind variables in conclusions"
    (lambda ()
      (convert-compile-time-error
       (logic (foo a)))))
@@ -162,10 +176,11 @@
   
   (check-equal?
    (logic
-    (parent 'alice 'bob)
-    (parent 'bob 'carol)
+    (decls (parent 'alice 'bob)
+           (decls (parent 'bob 'carol))
+           (decls))
 
-    ((ancestor X Y) :- (parent X Y))
+    (decls ((ancestor X Y) :- (parent X Y)))
     ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
    (rt:logic
     (list (rt:rule (rt:rule-frag 'parent '(alice bob) '()) '())
@@ -230,4 +245,42 @@
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
     '()))
+
+  (check-equal?
+   (logic/importing [add1]
+                    (foo 1)
+                    ((bar) :- (foo X) (is (add1 X) 2)))
+   (rt:logic
+    (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
+          (rt:rule (rt:rule-frag 'bar '() '())
+                   (list (rt:fact 'foo (list (rt:variable 'X)))
+                         (rt:fact add1 (list (rt:variable 'X)) 2))))
+    '()))
+
+  ;; errors with imports
+  (check-exn
+   #rx"imported relations cannot appear in conclusions"
+   (lambda ()
+     (convert-compile-time-error (logic/importing [add1]
+                                                  (add1 0)))))
+
+  (check-exn
+   #rx"imported relations cannot appear in conclusions"
+   (lambda ()
+     (convert-compile-time-error (logic/importing [add1]
+                                                  (is (add1 0) (choice 1))))))
+
+  (check-exn
+   #rx"imported relations must be used with 'is'"
+   (lambda ()
+     (convert-compile-time-error (logic/importing [add1]
+                                                  ((foo) :- (add1 0))))))
+
+  (check-exn
+   #rx"cannot run imported relations backwards"
+   (lambda ()
+     (convert-compile-time-error
+      (logic/importing [add1]
+                       ((foo X) :- (is (add1 X) 2))))))
+  
   )

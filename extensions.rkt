@@ -26,11 +26,11 @@
          ('c ['b 'd]))
 ;; EXPANDS TO
 #;(decls (edge 'a 'b)
-          (edge 'a 'c)
-          (edge 'a 'e)
-          (edge 'c 'b)
-          (edge 'c 'd)
-          ((edge X Y) :- (edge Y X)))
+         (edge 'a 'c)
+         (edge 'a 'e)
+         (edge 'c 'b)
+         (edge 'c 'd)
+         ((edge X Y) :- (edge Y X)))
 
 (check-equal?
  (length (stream->list (rt:all (logic

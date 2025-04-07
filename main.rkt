@@ -1,7 +1,11 @@
 #lang racket/base
 
-(module+ test
-  (require rackunit))
+(provide #;(for-syntax (all-from-out "private/spec.rkt"))
+         (all-from-out "private/database.rkt"
+                       "private/spec.rkt"
+                       "private/runtime.rkt")
+         #;(rename-out [spec:logic logic]
+                     [spec:logic/importing logic/importing]))
 
 ;; Notice
 ;; To install (from within the package directory):
@@ -25,26 +29,7 @@
 
 ;; Code here
 
-
-
-(module+ test
-  ;; Any code in this `test` submodule runs when this file is run using DrRacket
-  ;; or with `raco test`. The code here does not run when this file is
-  ;; required by another module.
-
-  (check-equal? (+ 2 2) 4))
-
-(module+ main
-  ;; (Optional) main submodule. Put code here if you need it to be executed when
-  ;; this file is run using DrRacket or the `racket` executable.  The code here
-  ;; does not run when this file is required by another module. Documentation:
-  ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
-
-  (require racket/cmdline)
-  (define who (box "world"))
-  (command-line
-    #:program "my-program"
-    #:once-each
-    [("-n" "--name") name "Who to say hello to" (set-box! who name)]
-    #:args ()
-    (printf "hello ~a~n" (unbox who))))
+(require "private/runtime.rkt"
+         "private/database.rkt"
+         "private/spec.rkt"
+         (for-syntax "private/spec.rkt"))

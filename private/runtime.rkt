@@ -7,7 +7,7 @@
          variable
          rule-frag
          rule
-         logic
+         program
          all)
 
 (require racket/stream
@@ -92,7 +92,7 @@
 ;; and the rules which require making choices (> 1 option on RHS of `is`)
 ;; TODO: add in information about imported Racket function(al relation)s
 
-(struct logic [deduce-rules choose-rules] #:transparent)
+(struct program [deduce-rules choose-rules] #:transparent)
 
 ;; A Solution is an opaque object that can be queried for propositions.
 
@@ -166,12 +166,12 @@
   ;; collect-backtracked : SearchStack -> [StreamOf Solution]
   (define (collect-backtracked stack)
     (result->stream (backtrack prog stack)))
-  
+
   (result->stream (solve prog (db-of) '())))
 
 ;; solve : Logic Database SearchStack -> SolutionResult
 ;; Given a search state and a database of currently known facts, obtain a
-;; single solution to the program, while tracking choices made. 
+;; single solution to the program, while tracking choices made.
 (define (solve prog db stack)
   ; if there is an inconsistency reached, we backtrack in an attempt
   ; to get to a better spot in our tree. if all things are inconsistencies,
@@ -179,13 +179,13 @@
 
   ; TODO: clean up. this is clear, but ugly...
   ; also, all calls are in tail position, to prevent stack overflow
-  (match (deduce (logic-deduce-rules prog) db stack)
+  (match (deduce (program-deduce-rules prog) db stack)
     [(db-state new-db new-st) (solve prog new-db new-st)]
     ['inconsistent ; triggers a backtrack
      (backtrack prog stack)]
     [#f
      ; if we could not deduce, we instead try to choose
-     (match (choose (logic-choose-rules prog) db stack)
+     (match (choose (program-choose-rules prog) db stack)
        [(db-state new-db new-st) (solve prog new-db new-st)]
        ['inconsistent ; triggers a backtrack
         (backtrack prog stack)]
@@ -211,7 +211,7 @@
                         (search-state-conclusion state)
                         (set-add (search-state-tried state) idx))
           (rest stack)))
-  
+
   (if (empty? stack) #f
       (let* ([current-state (first stack)]
              [current-db (search-state-database current-state)]
@@ -353,7 +353,7 @@
                         (equal? (hash-ref subst n) datum)
                         #t)]
       [d (equal? d datum)]))
-  
+
   ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
     (and (symbol=? (fact-rel open) (fact-rel fact))
@@ -363,7 +363,7 @@
          (or (and (none? (fact-value open))
                   (none? (fact-value fact)))
              (similar? (fact-value open) (fact-value fact)))))
-  
+
   (if (symbol? (fact-rel open))
       (db-filter looks-like? db)
       ; otherwise, we have a proc, which we run on the result of closing terms
@@ -393,7 +393,7 @@
                         curr-sub
                         (hash-set curr-sub n d))]
       [_ curr-sub]))
-  
+
   (assign-var (fact-value open)
               (fact-value f)
               (foldl assign-var
@@ -413,7 +413,7 @@
     (not (and (equal? (fact-rel f) (fact-rel known))
               (equal? (fact-terms f) (fact-terms known))
               (not (equal? (fact-value f) (fact-value known))))))
-  
+
   (db-andmap fact-consistent? db))
 
 ;; make-term-grounder : Subst -> [Term -> Term]
@@ -488,23 +488,23 @@
 
 (module+ test
   (require rackunit)
-  
+
   (check-equal?
-   (stream->list (all (logic
+   (stream->list (all (program
                        (list (rule (rule-frag 'foo '(1) '(a)) '()))
                        '())))
    (list (solution (set (fact 'foo '(1) 'a)))))
 
   ;; we can run imported relations
   (check-equal?
-   (stream->list (all (logic
+   (stream->list (all (program
                        (list (rule (rule-frag 'foo '() '())
                                    (list (fact add1 '(0) 1))))
                        '())))
    (list (solution (db-of (make-fact 'foo '())))))
 
   (check-equal?
-   (stream->list (all (logic
+   (stream->list (all (program
                        (list (rule (rule-frag 'foo '() '())
                                    (list (fact * '(0 1 2) 1))))
                        '())))
@@ -512,7 +512,7 @@
 
   ;; example where we bind a variable based on an import
   (check-equal?
-   (stream->list (all (logic
+   (stream->list (all (program
                        (list (rule (rule-frag 'foo '() (list (variable 'X)))
                                    (list (fact + '(1 2 3 4) (variable 'X)))))
                        '())))

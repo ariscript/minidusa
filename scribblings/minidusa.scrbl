@@ -1,5 +1,5 @@
 #lang scribble/manual
-@require[@for-label[minidusa
+@require[@for-label["../main.rkt"
                     racket/base]]
 
 @title{minidusa}

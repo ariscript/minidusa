@@ -2,7 +2,6 @@
 
 ;; maybe refine this later, yoinked from PEG class examples
 (provide (all-defined-out)
-         #;(for-space minidusa (all-defined-out))
          (for-syntax (all-defined-out)))
 
 (require syntax-spec-v3
@@ -35,18 +34,18 @@
    ;; a rel-var with the same name, so we expand accordingly
    (~> x:id
        #'[x x]))
- 
+
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
  ;;          | (decls <decl> ...)                 ; nested (for macros)
  (nonterminal decl
    #:allow-extension logic-macro
-   
+
    (c:conclusion (~datum :-) p:premise ...+)
    #:binding (nest p ... c)
 
    ((~datum decls) d:decl ...)
-   
+
    c:conclusion)
 
  ;; <conclusion> ::= <attribute>
@@ -65,7 +64,7 @@
  (nonterminal/nesting premise (nested)
    ((~datum is) a:attribute t:logic-term)
    #:binding (scope (import a) (import t) nested)
-   
+
    a:attribute
    #:binding (scope (import a) nested))
 
@@ -112,39 +111,39 @@
   (check-equal?
    (logic
     (foo 1))
-   (rt:logic (list (rt:rule (rt:rule-frag 'foo '(1) '())
-                            '()))
-             '()))
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
+                              '()))
+               '()))
 
   (check-equal?
    (logic
     ((foo 2) :- (foo 1))
     (foo 1))
-   (rt:logic (list (rt:rule (rt:rule-frag 'foo '(2) '())
-                            (list (rt:fact 'foo '(1))))
-                   (rt:rule (rt:rule-frag 'foo '(1) '())
-                            '()))
-             '()))
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '(2) '())
+                              (list (rt:fact 'foo '(1))))
+                     (rt:rule (rt:rule-frag 'foo '(1) '())
+                              '()))
+               '()))
 
   (check-equal?
    (logic
     (foo "abc")
     (is (bar #t 'a) (choice 1 2 #\c)))
-   (rt:logic (list (rt:rule (rt:rule-frag 'foo '("abc") '())
-                            '()))
-             (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
-                            '()))))
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '("abc") '())
+                              '()))
+               (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
+                              '()))))
 
   (check-equal?
    (logic
     ((foo X) :- (is (bar) X) (baz)))
-   (rt:logic (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
-                            (list (rt:fact 'bar '() (rt:variable 'X))
-                                  (rt:fact 'baz '()))))
-             '()))
+   (rt:program (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+                              (list (rt:fact 'bar '() (rt:variable 'X))
+                                    (rt:fact 'baz '()))))
+               '()))
 
   ;; some error cases
-  
+
   (check-exn
    #rx"cannot bind variables in conclusions"
    (lambda ()
@@ -173,7 +172,7 @@
       (logic (is 10)))))
 
   ;; larger examples
-  
+
   (check-equal?
    (logic
     (decls (parent 'alice 'bob)
@@ -182,7 +181,7 @@
 
     (decls ((ancestor X Y) :- (parent X Y)))
     ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
-   (rt:logic
+   (rt:program
     (list (rt:rule (rt:rule-frag 'parent '(alice bob) '()) '())
           (rt:rule (rt:rule-frag 'parent '(bob carol) '()) '())
           (rt:rule (rt:rule-frag 'ancestor
@@ -205,7 +204,7 @@
     ((is (terrain R) (choice 'forest 'ocean))
      :-
      (adjacent R S) (is (terrain S) 'ocean)))
-   (rt:logic
+   (rt:program
     '()
     (list
      (rt:rule
@@ -218,11 +217,11 @@
        (rt:fact 'terrain (list (rt:variable 'S)) 'ocean))))))
 
   ;; importing tests
-  
+
   (check-equal?
    (logic/importing ([a add1])
                     ((foo) :- (is (a 0) 1)))
-   (rt:logic
+   (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
     '()))
@@ -231,7 +230,7 @@
    (logic/importing ([p +])
                     ((foo) :- (is (p 1 2) 3))
                     ((bar X) :- (is (p 1 2 3) X)))
-   (rt:logic
+   (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact + '(1 2) 3)))
           (rt:rule (rt:rule-frag 'bar (list (rt:variable 'X)) '())
@@ -241,7 +240,7 @@
   (check-equal?
    (logic/importing [add1]
                     ((foo) :- (is (add1 0) 1)))
-   (rt:logic
+   (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
     '()))
@@ -250,7 +249,7 @@
    (logic/importing [add1]
                     (foo 1)
                     ((bar) :- (foo X) (is (add1 X) 2)))
-   (rt:logic
+   (rt:program
     (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
           (rt:rule (rt:rule-frag 'bar '() '())
                    (list (rt:fact 'foo (list (rt:variable 'X)))
@@ -281,6 +280,4 @@
    (lambda ()
      (convert-compile-time-error
       (logic/importing [add1]
-                       ((foo X) :- (is (add1 X) 2))))))
-  
-  )
+                       ((foo X) :- (is (add1 X) 2)))))))

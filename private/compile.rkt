@@ -68,17 +68,17 @@
 
          #:with (choose-rule ...)
          (flatten (map compile-decl (filter is-choose? (attribute d))))
-     
-         #'(rt:logic (list deduce-rule ...)
-                     (list choose-rule ...))])))
-  
+
+         #'(rt:program (list deduce-rule ...)
+                       (list choose-rule ...))])))
+
   (syntax-parse imports-stx
     [[[rel-var rhs] ...]
      #`(let ([rel-var rhs] ...) #,body)]))
 
 ;; DeclSyntax -> Bool
 ;; determines if the given declaration is a choice-based rule
-(define (is-choose? decl-stx)  
+(define (is-choose? decl-stx)
   (syntax-parse decl-stx
     #:datum-literals (is :-)
     [(is _ (choice _ _ ...+)) #t]  ; fact
@@ -164,10 +164,10 @@
 ;; and returns as the runtime representation of the name
 (define (compile-rel-id arities imports rel-id arity)
   (define rel-sym (syntax->datum rel-id))
-  
+
   (when (member rel-sym RESERVED-NAMES)
     (raise-syntax-error #f "use of reserved name" rel-id))
-  
+
   (if (set-member? imports rel-sym)
       ; sets to arity if missing from the table -> will be equal
       rel-id

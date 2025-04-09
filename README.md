@@ -4,6 +4,22 @@ This is a smaller implementation of the finite-choice logic programming
 language Dusa, implemented in Racket, as part of our final project for
 [CS 3620 (Hack Your Own Language)](https://mballantyne.net/hyol).
 
+## Project Structure
+
+We split our implementation into a few different files:
+
+- `main.rkt`: exports the relevant syntax and functions for the DSL
+- `private/spec.rkt`: the main `syntax-spec`, and `logic` macro
+  - contains tests for parsing and compiling
+- `private/compile.rkt`: the compiler from DSL syntax to our AST
+  (as Racket syntax)
+- `private/runtime.rkt`: the runtime system: AST and the solver
+  - some tests for solving simple programs from AST
+- `private/database.rkt`: abstraction over the auxiliary data structure
+  so we can change our internal representation for efficiency
+- `tests/test.rkt`: integration tests from syntax to solutions
+- `tests/extensions.rkt`: tests for using DSL extension macros
+
 ## Purpose and Concepts
 
 Logic programming is a declarative programming paradigm where logical

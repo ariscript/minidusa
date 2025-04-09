@@ -165,8 +165,7 @@
 
   (check-equal?
    (length (stream->list (all
-                          (logic #:import
-                            ([s add1])
+                          (logic #:import ([s add1])
                             ((run 0) is {'stop 'go})
                             (((run M) is {'stop 'go})
                              :- ((run N) is 'go) ((s N) is M))
@@ -178,7 +177,7 @@
    11)
 
   (check-equal?
-   (stream->list (all (logic #:import [add1]
+   (stream->list (all (logic #:import (add1)
                         (foo 1)
                         ((bar) :- (foo X) ((add1 X) is 2)))))
    (list (solution (db-of (fact 'foo '(1))

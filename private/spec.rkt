@@ -123,7 +123,7 @@
   (check-equal?
    (logic
      (foo "abc")
-     (is (bar #t 'a) (choice 1 2 #\c)))
+     ((bar #t 'a) is {1 2 #\c}))
    (rt:program (list (rt:rule (rt:rule-frag 'foo '("abc") '())
                               '()))
                (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
@@ -131,7 +131,7 @@
 
   (check-equal?
    (logic
-     ((foo X) :- (is (bar) X) (baz)))
+     ((foo X) :- ((bar) is X) (baz)))
    (rt:program (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
                               (list (rt:fact 'bar '() (rt:variable 'X))
                                     (rt:fact 'baz '()))))
@@ -195,10 +195,10 @@
 
   (check-equal?
    (logic
-     ((is (terrain R) (choice 'mountain 'forest 'ocean)) :- (region R))
-     ((is (terrain R) (choice 'forest 'ocean))
+     (((terrain R) is {'mountain 'forest 'ocean}) :- (region R))
+     (((terrain R) is {'forest 'ocean})
       :-
-      (adjacent R S) (is (terrain S) 'ocean)))
+      (adjacent R S) ((terrain S) is 'ocean)))
    (rt:program
     '()
     (list
@@ -215,7 +215,7 @@
 
   (check-equal?
    (logic #:import ([a add1])
-     ((foo) :- (is (a 0) 1)))
+     ((foo) :- ((a 0) is 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
@@ -223,8 +223,8 @@
 
   (check-equal?
    (logic #:import ([p +])
-     ((foo) :- (is (p 1 2) 3))
-     ((bar X) :- (is (p 1 2 3) X)))
+     ((foo) :- ((p 1 2) is 3))
+     ((bar X) :- ((p 1 2 3) is X)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact + '(1 2) 3)))
@@ -234,7 +234,7 @@
 
   (check-equal?
    (logic #:import [add1]
-     ((foo) :- (is (add1 0) 1)))
+     ((foo) :- ((add1 0) is 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
@@ -243,7 +243,7 @@
   (check-equal?
    (logic #:import [add1]
      (foo 1)
-     ((bar) :- (foo X) (is (add1 X) 2)))
+     ((bar) :- (foo X) ((add1 X) is 2)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
           (rt:rule (rt:rule-frag 'bar '() '())
@@ -262,7 +262,7 @@
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
      (convert-compile-time-error (logic #:import [add1]
-                                   (is (add1 0) (choice 1))))))
+                                   ((add1 0) is {1})))))
 
   (check-exn
    #rx"imported relations must be used with 'is'"
@@ -275,4 +275,4 @@
    (lambda ()
      (convert-compile-time-error
       (logic #:import [add1]
-        ((foo X) :- (is (add1 X) 2)))))))
+        ((foo X) :- ((add1 X) is 2)))))))

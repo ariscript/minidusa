@@ -244,7 +244,7 @@
     '()))
 
   (check-equal?
-   (logic #:import [add1]
+   (logic #:import (add1)
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
    (rt:program

@@ -2,7 +2,11 @@
 ;; a top-level finite-choice logic program consists of
 ;; facts and rules to make deductions
 <logic> ::= (logic <decl> ...)
-          | (logic #:import [<imp> ...] <decl> ...)
+          | (logic #:import (<imp> ...) <decl> ...)
+
+;; an import, which might be named from a Racket expression
+<imp> ::= x:racket-var
+        | [x:id e:racket-expr]
 
 ;; declarations are facts (conclusions) or rules
 <decl> ::= <conclusion>                       ; fact

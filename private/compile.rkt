@@ -12,38 +12,59 @@
 
 ;; EXAMPLE EXPANSIONS!
 #;(logic
-   (foo 1))
+    (foo 1))
 ;; =>
-#;(rt:logic (list (rt:rule (rt:rule-frag 'foo '(1) '())
-                           '()))
-            '())
+#;(rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
+                             '()))
+              '())
 
 #;(logic
-   ((foo 2) :- (foo 1))
-   (foo 1))
+    ((foo 2) :- (foo 1))
+    (foo 1))
 ;; =>
-#;(rt:logic (list (rt:rule (rt:rule-frag 'foo '(2) '())
-                           (list (rt:fact 'foo '(1))))
-                  (rt:rule (rt:rule-frag 'foo '(1) '())
-                           '()))
-            '())
+#;(rt:program (list (rt:rule (rt:rule-frag 'foo '(2) '())
+                             (list (rt:fact 'foo '(1))))
+                    (rt:rule (rt:rule-frag 'foo '(1) '())
+                             '()))
+              '())
 
 #;(logic
-   (foo 1)
-   (is (bar 10 11) (choice 1 2 3)))
+    (foo 1)
+    ((bar 10 11) is {1 2 3}))
 ;; =>
-#;(rt:logic (list (rt:rule (rt:rule-frag 'foo '(1) '())
-                           '()))
-            (list (rt:rule (rt:rule-frag 'bar '(10 11) '(1 2 3))
-                           '())))
+#;(rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
+                             '()))
+              (list (rt:rule (rt:rule-frag 'bar '(10 11) '(1 2 3))
+                             '())))
 
 #;(logic
-   ((foo X) :- (is (bar) X) (baz)))
+    ((foo X) :- ((bar) is X) (baz)))
 ;; =>
-#;(rt:logic (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
-                           (list (rt:fact 'bar '() (rt:variable 'X))
-                                 (rt:fact 'baz '()))))
-            '())
+#;(rt:program (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+                             (list (rt:fact 'bar '() (rt:variable 'X))
+                                   (rt:fact 'baz '()))))
+              '())
+
+#;(logic #:import ([a add1])
+    ((foo) :- ((a 0) is 1)))
+;; =>
+#;(let ([a add1])
+    (rt:program
+     (list (rt:rule (rt:rule-frag 'foo '() '())
+                    (list (rt:fact a '(0) 1))))
+     '()))
+
+#;(logic #:import (add1)
+    (foo 1)
+    ((bar) :- (foo X) ((add1 X) is 2)))
+;; =>
+#;(let ([add1 add1])
+    (rt:program
+     (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
+           (rt:rule (rt:rule-frag 'bar '() '())
+                    (list (rt:fact 'foo (list (rt:variable 'X)))
+                          (rt:fact add1 (list (rt:variable 'X)) 2))))
+     '()))
 
 ;; this is the old compile-time function
 ;; ImportsSyntax LogicSyntax -> RacketSyntax

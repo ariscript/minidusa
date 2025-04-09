@@ -15,14 +15,9 @@
  (binding-class logic-var)
  (extension-class logic-macro #:binding-space minidusa)
 
- ;; (logic <decl> ...+)
- (host-interface/expression
-  (logic d:decl ...+)
-  (compile-logic #'() #'(d ...)))
-
  ;; (logic/importing [<imp> ...+] <decl> ...+)
  (host-interface/expression
-  (logic/importing [i:imp ...+] d:decl ...+)
+  (logic/importing [i:imp ...] d:decl ...+)
   (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
@@ -48,28 +43,28 @@
 
    c:conclusion)
 
- ;; <conclusion> ::= <attribute>
- ;;                | (is <attribute> (choice <logic-term> ...+))
+ ;; <conclusion> ::= <attr>
+ ;;                | (is <attr> {<logic-term> ...+})
  (nonterminal conclusion
    ;; it's important that this comes first, otherwise some things
    ;; are attempted to be parsed as logic-terms and explode
-   ((~datum is) a:attribute ((~datum choice) t:logic-term ...+))
+   (a:attr (~datum is) {t:logic-term ...+})
    #:binding (scope (import a) (import t) ...)
 
-   a:attribute
+   a:attr
    #:binding (scope (import a)))
 
- ;; <premise> ::= <attribute>
- ;;             | (is <attribute> <logic-term>)
+ ;; <premise> ::= <attr>
+ ;;             | (is <attr> <logic-term>)
  (nonterminal/nesting premise (nested)
-   ((~datum is) a:attribute t:logic-term)
+   (a:attr (~datum is) t:logic-term)
    #:binding (scope (import a) (import t) nested)
 
-   a:attribute
+   a:attr
    #:binding (scope (import a) nested))
 
- ;; <attribute> ::= (<ID> <logic-term> ...)
- (nonterminal/exporting attribute
+ ;; <attr> ::= (<ID> <logic-term> ...)
+ (nonterminal/exporting attr
    (name:id t:logic-term ...)
    #:binding [(re-export t) ...])
 
@@ -94,14 +89,14 @@
    c:char)
  )
 
-#;(define-syntax logic
-    (lambda (stx)
-      (syntax-parse stx
-        [(_ (~or* (~seq #:import imports)
-                  (~seq))
-            ds ...)
-         #:with imps (or (attribute imports) #'())
-         #'(logic/importing imps ds ...)])))
+(define-syntax logic
+  (lambda (stx)
+    (syntax-parse stx
+      [(_ (~or* (~seq #:import imports)
+                (~seq))
+          ds ...)
+       #:with imps (or (attribute imports) #'())
+       #'(logic/importing imps ds ...)])))
 
 (module+ test
   (require rackunit
@@ -110,15 +105,15 @@
 
   (check-equal?
    (logic
-    (foo 1))
+     (foo 1))
    (rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
                               '()))
                '()))
 
   (check-equal?
    (logic
-    ((foo 2) :- (foo 1))
-    (foo 1))
+     ((foo 2) :- (foo 1))
+     (foo 1))
    (rt:program (list (rt:rule (rt:rule-frag 'foo '(2) '())
                               (list (rt:fact 'foo '(1))))
                      (rt:rule (rt:rule-frag 'foo '(1) '())
@@ -127,8 +122,8 @@
 
   (check-equal?
    (logic
-    (foo "abc")
-    (is (bar #t 'a) (choice 1 2 #\c)))
+     (foo "abc")
+     (is (bar #t 'a) (choice 1 2 #\c)))
    (rt:program (list (rt:rule (rt:rule-frag 'foo '("abc") '())
                               '()))
                (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
@@ -136,7 +131,7 @@
 
   (check-equal?
    (logic
-    ((foo X) :- (is (bar) X) (baz)))
+     ((foo X) :- (is (bar) X) (baz)))
    (rt:program (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
                               (list (rt:fact 'bar '() (rt:variable 'X))
                                     (rt:fact 'baz '()))))
@@ -155,8 +150,8 @@
    (lambda ()
      (convert-compile-time-error
       (logic
-       (foo 1)
-       (foo 1 2)))))
+        (foo 1)
+        (foo 1 2)))))
 
   (check-exn
    ; this error message isn't good, but it's from syntax-spec
@@ -175,12 +170,12 @@
 
   (check-equal?
    (logic
-    (decls (parent 'alice 'bob)
-           (decls (parent 'bob 'carol))
-           (decls))
+     (decls (parent 'alice 'bob)
+            (decls (parent 'bob 'carol))
+            (decls))
 
-    (decls ((ancestor X Y) :- (parent X Y)))
-    ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
+     (decls ((ancestor X Y) :- (parent X Y)))
+     ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'parent '(alice bob) '()) '())
           (rt:rule (rt:rule-frag 'parent '(bob carol) '()) '())
@@ -200,10 +195,10 @@
 
   (check-equal?
    (logic
-    ((is (terrain R) (choice 'mountain 'forest 'ocean)) :- (region R))
-    ((is (terrain R) (choice 'forest 'ocean))
-     :-
-     (adjacent R S) (is (terrain S) 'ocean)))
+     ((is (terrain R) (choice 'mountain 'forest 'ocean)) :- (region R))
+     ((is (terrain R) (choice 'forest 'ocean))
+      :-
+      (adjacent R S) (is (terrain S) 'ocean)))
    (rt:program
     '()
     (list
@@ -219,17 +214,17 @@
   ;; importing tests
 
   (check-equal?
-   (logic/importing ([a add1])
-                    ((foo) :- (is (a 0) 1)))
+   (logic #:import ([a add1])
+     ((foo) :- (is (a 0) 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
     '()))
 
   (check-equal?
-   (logic/importing ([p +])
-                    ((foo) :- (is (p 1 2) 3))
-                    ((bar X) :- (is (p 1 2 3) X)))
+   (logic #:import ([p +])
+     ((foo) :- (is (p 1 2) 3))
+     ((bar X) :- (is (p 1 2 3) X)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact + '(1 2) 3)))
@@ -238,17 +233,17 @@
     '()))
 
   (check-equal?
-   (logic/importing [add1]
-                    ((foo) :- (is (add1 0) 1)))
+   (logic #:import [add1]
+     ((foo) :- (is (add1 0) 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
                    (list (rt:fact add1 '(0) 1))))
     '()))
 
   (check-equal?
-   (logic/importing [add1]
-                    (foo 1)
-                    ((bar) :- (foo X) (is (add1 X) 2)))
+   (logic #:import [add1]
+     (foo 1)
+     ((bar) :- (foo X) (is (add1 X) 2)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
           (rt:rule (rt:rule-frag 'bar '() '())
@@ -260,24 +255,24 @@
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic/importing [add1]
-                                                  (add1 0)))))
+     (convert-compile-time-error (logic #:import [add1]
+                                   (add1 0)))))
 
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic/importing [add1]
-                                                  (is (add1 0) (choice 1))))))
+     (convert-compile-time-error (logic #:import [add1]
+                                   (is (add1 0) (choice 1))))))
 
   (check-exn
    #rx"imported relations must be used with 'is'"
    (lambda ()
-     (convert-compile-time-error (logic/importing [add1]
-                                                  ((foo) :- (add1 0))))))
+     (convert-compile-time-error (logic #:import [add1]
+                                   ((foo) :- (add1 0))))))
 
   (check-exn
    #rx"cannot run imported relations backwards"
    (lambda ()
      (convert-compile-time-error
-      (logic/importing [add1]
-                       ((foo X) :- (is (add1 X) 2)))))))
+      (logic #:import [add1]
+        ((foo X) :- (is (add1 X) 2)))))))

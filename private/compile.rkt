@@ -81,8 +81,10 @@
 (define (is-choose? decl-stx)
   (syntax-parse decl-stx
     #:datum-literals (is :-)
-    [(is _ (choice _ _ ...+)) #t]  ; fact
-    [((is _ (choice _ _ ...+)) :- _ ...+) #t]  ; rule
+    ; we require two choices since a choice of one is
+    ; not really a choice
+    [(_ is {_ _ ...+}) #t]  ; fact
+    [((_ is {_ _ ...+}) :- _ ...+) #t]  ; rule
     [_ #f]))
 
 ;; MutSymbolTable MutSymbolSet DeclSyntax -> [ListOf RacketSyntax]
@@ -118,8 +120,8 @@
               "imported relations cannot appear in conclusions"
               name)))])
     (syntax-parse conc-stx
-      #:datum-literals (is choice)
-      [(is (name t ...) (choice ch ...+))
+      #:datum-literals (is)
+      [((name t ...) is {ch ...+})
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with (comp-ch ...) (map compile-term (attribute ch))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
@@ -142,7 +144,7 @@
                        "cannot run imported relations backwards")))])
     (syntax-parse prem-stx
       #:datum-literals (is)
-      [(is (name t ...) ch)
+      [((name t ...) is ch)
        #:with (comp-t ...)
        (map (compile-term-named (syntax->datum #'name)) (attribute t))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))

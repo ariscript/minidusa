@@ -11,8 +11,8 @@
 
   (check-equal?
    (stream->list (all (logic
-                       ((foo 2) :- (foo 1))
-                       (foo 1))))
+                        ((foo 2) :- (foo 1))
+                        (foo 1))))
    ;; TODO: use `solution` and override equal? to make this insensitive to
    ;; the order in which facts are deduced
    (list (solution (db-of (fact 'foo '(2)) (fact 'foo '(1))))))
@@ -20,16 +20,16 @@
   ;; order of the rules in the program does not matter
   (check-equal?
    (stream->list (all (logic
-                       (foo 1)
-                       ((foo 2) :- (foo 1)))))
+                        (foo 1)
+                        ((foo 2) :- (foo 1)))))
    (list (solution (db-of (fact 'foo '(2)) (fact 'foo '(1))))))
 
   ;; TODO: make this test less brittle
   (check-equal?
    (stream->list (all (logic
-                       (foo 1)
-                       ((bar X) :- (foo X))
-                       ((foo 2) :- (foo 1)))))
+                        (foo 1)
+                        ((bar X) :- (foo X))
+                        ((foo 2) :- (foo 1)))))
    (list (solution (db-of (fact 'bar '(2))
                           (fact 'foo '(2))
                           (fact 'bar '(1))
@@ -37,87 +37,87 @@
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo 1) (choice 'a)))))
+                        (is (foo 1) (choice 'a)))))
    (list (solution (db-of (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo 1) (choice 'a))
-                       ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
+                        (is (foo 1) (choice 'a))
+                        ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
    (list (solution (db-of (fact 'foo '(2) 'b)
                           (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo 1) (choice 'a))
-                       ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
+                        (is (foo 1) (choice 'a))
+                        ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
    (list (solution (db-of (fact 'bar '(2) 'a)
                           (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (stream->list (all (logic
-                       (foo 1)
-                       (foo 2)
-                       ((is (bar) (choice X)) :- (foo X)))))
+                        (foo 1)
+                        (foo 2)
+                        ((is (bar) (choice X)) :- (foo X)))))
    '())
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo) (choice 'a))
-                       (is (foo) (choice 'b)))))
+                        (is (foo) (choice 'a))
+                        (is (foo) (choice 'b)))))
    '())
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo) (choice 'a 'b)))))
+                        (is (foo) (choice 'a 'b)))))
    (list (solution (db-of (fact 'foo '() 'a)))
          (solution (db-of (fact 'foo '() 'b)))))
 
   (check-equal?
    (stream->list (all (logic
-                       (is (foo) (choice 'a 'b))
-                       (is (foo) (choice 'b 'c)))))
+                        (is (foo) (choice 'a 'b))
+                        (is (foo) (choice 'b 'c)))))
    (list (solution (db-of (fact 'foo '() 'b)))))
 
   (check-equal?
    (length (stream->list
             (all (logic
-                  (edge 'a 'b)
-                  (edge 'b 'c)
-                  ((edge X Y) :- (edge Y X))
-                  ((node X) :- (edge X _))
-                  ((is (color X) (choice 1 2 3)) :- (node X))))))
+                   (edge 'a 'b)
+                   (edge 'b 'c)
+                   ((edge X Y) :- (edge Y X))
+                   ((node X) :- (edge X _))
+                   ((is (color X) (choice 1 2 3)) :- (node X))))))
    27)
 
   (check-equal?
    (length (stream->list (all (logic
-                               (edge 'a 'b)
-                               (edge 'b 'c)
-                               ((edge X Y) :- (edge Y X))
-                               ((node X) :- (edge X _))
-                               ((is (color X) (choice 1 2 3)) :- (node X))
+                                (edge 'a 'b)
+                                (edge 'b 'c)
+                                ((edge X Y) :- (edge Y X))
+                                ((node X) :- (edge X _))
+                                ((is (color X) (choice 1 2 3)) :- (node X))
 
-                               (is (ok) (choice #t))
-                               ((is (ok) (choice #f)) :- (edge X Y)
-                                                      (is (color X) C)
-                                                      (is (color Y) C))))))
+                                (is (ok) (choice #t))
+                                ((is (ok) (choice #f)) :- (edge X Y)
+                                                       (is (color X) C)
+                                                       (is (color Y) C))))))
    12)
 
   (check-equal?
    (length (stream->list (all (logic
-                               (edge 'a 'b)
-                               (edge 'b 'c)
-                               (edge 'a 'c)
-                               (edge 'c 'd)
-                               (edge 'a 'e)
-                               ((edge X Y) :- (edge Y X))
-                               ((node X) :- (edge X _))
-                               ((is (color X) (choice 1 2 3)) :- (node X))
+                                (edge 'a 'b)
+                                (edge 'b 'c)
+                                (edge 'a 'c)
+                                (edge 'c 'd)
+                                (edge 'a 'e)
+                                ((edge X Y) :- (edge Y X))
+                                ((node X) :- (edge X _))
+                                ((is (color X) (choice 1 2 3)) :- (node X))
 
-                               (is (ok) (choice #t))
-                               ((is (ok) (choice #f)) :- (edge X Y)
-                                                      (is (color X) C)
-                                                      (is (color Y) C))))))
+                                (is (ok) (choice #t))
+                                ((is (ok) (choice #f)) :- (edge X Y)
+                                                       (is (color X) C)
+                                                       (is (color Y) C))))))
    24)
 
   ;; - Alice
@@ -128,13 +128,13 @@
 
   (define ancestor-prog
     (logic
-     (parent 'alice 'bob)
-     (parent 'bob 'carol)
-     (parent 'bob 'dianne)
-     (parent 'alice 'ethan)
+      (parent 'alice 'bob)
+      (parent 'bob 'carol)
+      (parent 'bob 'dianne)
+      (parent 'alice 'ethan)
 
-     ((ancestor X Y) :- (parent X Y))
-     ((ancestor X Y) :- (parent X Z) (ancestor Z Y))))
+      ((ancestor X Y) :- (parent X Y))
+      ((ancestor X Y) :- (parent X Z) (ancestor Z Y))))
 
   (check-equal?
    (stream->list (all ancestor-prog))
@@ -156,7 +156,7 @@
   (check-equal?
    (stream->list
     (all
-     (logic/importing ([p +])
+     (logic #:import ([p +])
                       ((foo) :- (is (p 1 2) 3))
                       ((bar X) :- (is (p 1 2 3) X)))))
    (list (solution (db-of
@@ -165,7 +165,7 @@
 
   (check-equal?
    (length (stream->list (all
-                          (logic/importing
+                          (logic #:import
                            ([s add1])
                            (is (run 0) (choice 'stop 'go))
                            ((is (run M) (choice 'stop 'go))
@@ -178,7 +178,7 @@
    11)
 
   (check-equal?
-   (stream->list (all (logic/importing [add1]
+   (stream->list (all (logic #:import [add1]
                                        (foo 1)
                                        ((bar) :- (foo X) (is (add1 X) 2)))))
    (list (solution (db-of (fact 'foo '(1))

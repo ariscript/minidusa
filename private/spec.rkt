@@ -1,7 +1,8 @@
 #lang racket
 
 ;; maybe refine this later, yoinked from PEG class examples
-(provide (all-defined-out)
+(provide (except-out (all-defined-out)
+                     logic/importing)
          (for-syntax (all-defined-out)))
 
 (require syntax-spec-v3
@@ -15,9 +16,9 @@
  (binding-class logic-var)
  (extension-class logic-macro #:binding-space minidusa)
 
- ;; (logic/importing [<imp> ...+] <decl> ...+)
+ ;; (logic/importing [<imp> ...] <decl> ...)
  (host-interface/expression
-  (logic/importing [i:imp ...] d:decl ...+)
+  (logic/importing [i:imp ...] d:decl ...)
   (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
@@ -44,7 +45,7 @@
    c:conclusion)
 
  ;; <conclusion> ::= <attr>
- ;;                | (is <attr> {<logic-term> ...+})
+ ;;                | (<attr> is {<logic-term> ...+})
  (nonterminal conclusion
    ;; it's important that this comes first, otherwise some things
    ;; are attempted to be parsed as logic-terms and explode
@@ -55,7 +56,7 @@
    #:binding (scope (import a)))
 
  ;; <premise> ::= <attr>
- ;;             | (is <attr> <logic-term>)
+ ;;             | (<attr> is <logic-term>)
  (nonterminal/nesting premise (nested)
    (a:attr (~datum is) t:logic-term)
    #:binding (scope (import a) (import t) nested)
@@ -89,6 +90,8 @@
    c:char)
  )
 
+;; logic : (logic <decl> ...)
+;;       | (logic #:import [<imp> ...] <decl> ...)
 (define-syntax logic
   (lambda (stx)
     (syntax-parse stx

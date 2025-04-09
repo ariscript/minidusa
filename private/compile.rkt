@@ -61,7 +61,7 @@
   (define body
     (let ([compile-decl ((curry compile-decl) rel-arities imported-rel-vars)])
       (syntax-parse logic-stx
-        [(d ...+)
+        [(d ...)
          ;; like define/syntax-parse, but shorter
          #:with (deduce-rule ...)
          (flatten (map compile-decl (filter (negate is-choose?) (attribute d))))

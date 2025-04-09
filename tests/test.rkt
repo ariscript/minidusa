@@ -169,11 +169,11 @@
                            ([s add1])
                            ((run 0) is {'stop 'go})
                            (((run M) is {'stop 'go})
-                            :- ((run N) 'go) ((s N) is M))
+                            :- ((run N) is 'go) ((s N) is M))
 
                            ; forbid desugaring
-                           ((ok) is (choice #t))
-                           (((ok) is (choice #f)) :- ((run 10) is 'go))))))
+                           ((ok) is {#t})
+                           (((ok) is {#f}) :- ((run 10) is 'go))))))
    ; 11 solutions because 0-10 inclusive
    11)
 

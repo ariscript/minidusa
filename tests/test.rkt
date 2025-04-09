@@ -37,20 +37,20 @@
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo 1) (choice 'a)))))
+                        ((foo 1) is {'a}))))
    (list (solution (db-of (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo 1) (choice 'a))
-                        ((is (foo 2) (choice 'b)) :- (is (foo 1) 'a)))))
+                        ((foo 1) is {'a})
+                        (((foo 2) is {'b}) :- ((foo 1) is 'a)))))
    (list (solution (db-of (fact 'foo '(2) 'b)
                           (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo 1) (choice 'a))
-                        ((is (bar 2) (choice X)) :- (is (foo 1) X)))))
+                        ((foo 1) is {'a})
+                        (((bar 2) is {X}) :- ((foo 1) is X)))))
    (list (solution (db-of (fact 'bar '(2) 'a)
                           (fact 'foo '(1) 'a)))))
 
@@ -58,25 +58,25 @@
    (stream->list (all (logic
                         (foo 1)
                         (foo 2)
-                        ((is (bar) (choice X)) :- (foo X)))))
+                        (((bar) is {X}) :- (foo X)))))
    '())
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo) (choice 'a))
-                        (is (foo) (choice 'b)))))
+                        ((foo) is {'a})
+                        ((foo) is {'b}))))
    '())
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo) (choice 'a 'b)))))
+                        ((foo) is {'a 'b}))))
    (list (solution (db-of (fact 'foo '() 'a)))
          (solution (db-of (fact 'foo '() 'b)))))
 
   (check-equal?
    (stream->list (all (logic
-                        (is (foo) (choice 'a 'b))
-                        (is (foo) (choice 'b 'c)))))
+                        ((foo) is {'a 'b})
+                        ((foo) is {'b 'c}))))
    (list (solution (db-of (fact 'foo '() 'b)))))
 
   (check-equal?
@@ -86,7 +86,7 @@
                    (edge 'b 'c)
                    ((edge X Y) :- (edge Y X))
                    ((node X) :- (edge X _))
-                   ((is (color X) (choice 1 2 3)) :- (node X))))))
+                   (((color X) is {1 2 3}) :- (node X))))))
    27)
 
   (check-equal?
@@ -95,12 +95,12 @@
                                 (edge 'b 'c)
                                 ((edge X Y) :- (edge Y X))
                                 ((node X) :- (edge X _))
-                                ((is (color X) (choice 1 2 3)) :- (node X))
+                                (((color X) is {1 2 3}) :- (node X))
 
-                                (is (ok) (choice #t))
-                                ((is (ok) (choice #f)) :- (edge X Y)
-                                                       (is (color X) C)
-                                                       (is (color Y) C))))))
+                                ((ok) is {#t})
+                                (((ok) is {#f}) :- (edge X Y)
+                                                       ((color X) is C)
+                                                       ((color Y) is C))))))
    12)
 
   (check-equal?
@@ -112,12 +112,12 @@
                                 (edge 'a 'e)
                                 ((edge X Y) :- (edge Y X))
                                 ((node X) :- (edge X _))
-                                ((is (color X) (choice 1 2 3)) :- (node X))
+                                (((color X) is {1 2 3}) :- (node X))
 
-                                (is (ok) (choice #t))
-                                ((is (ok) (choice #f)) :- (edge X Y)
-                                                       (is (color X) C)
-                                                       (is (color Y) C))))))
+                                ((ok) is {#t})
+                                (((ok) is {#f}) :- (edge X Y)
+                                                       ((color X) is C)
+                                                       ((color Y) is C))))))
    24)
 
   ;; - Alice
@@ -157,8 +157,8 @@
    (stream->list
     (all
      (logic #:import ([p +])
-                      ((foo) :- (is (p 1 2) 3))
-                      ((bar X) :- (is (p 1 2 3) X)))))
+                      ((foo) :- ((p 1 2) is 3))
+                      ((bar X) :- ((p 1 2 3) is X)))))
    (list (solution (db-of
                     (fact 'foo '())
                     (fact 'bar '(6))))))
@@ -167,19 +167,19 @@
    (length (stream->list (all
                           (logic #:import
                            ([s add1])
-                           (is (run 0) (choice 'stop 'go))
-                           ((is (run M) (choice 'stop 'go))
-                            :- (is (run N) 'go) (is (s N) M))
+                           ((run 0) is {'stop 'go})
+                           (((run M) is {'stop 'go})
+                            :- ((run N) 'go) ((s N) is M))
 
                            ; forbid desugaring
-                           (is (ok) (choice #t))
-                           ((is (ok) (choice #f)) :- (is (run 10) 'go))))))
+                           ((ok) is (choice #t))
+                           (((ok) is (choice #f)) :- ((run 10) is 'go))))))
    ; 11 solutions because 0-10 inclusive
    11)
 
   (check-equal?
    (stream->list (all (logic #:import [add1]
                                        (foo 1)
-                                       ((bar) :- (foo X) (is (add1 X) 2)))))
+                                       ((bar) :- (foo X) ((add1 X) is 2)))))
    (list (solution (db-of (fact 'foo '(1))
                           (fact 'bar '()))))))

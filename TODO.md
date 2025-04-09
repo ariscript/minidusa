@@ -17,7 +17,8 @@ SYNTAX RELATED:
 
 COMPILER RELATED:
 - [x] Change compilers to use normal tables
-  - [x] Also, we can use `parameter`s to avoid threading
+- [ ] Consider using `parameter`s to avoid threading
+  - [ ] Maybe pull `raise-if-imported`
 
 RUNTIME RELATED:
 - [x] Implement `choose`

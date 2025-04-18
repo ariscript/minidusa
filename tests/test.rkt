@@ -214,4 +214,15 @@
                     (fact 'same-len '("acd" "cda"))
                     (fact 'same-len '("cda" "123"))
                     (fact 'same-len '("cda" "acd"))
-                    (fact 'same-len '("cda" "cda")))))))
+                    (fact 'same-len '("cda" "cda"))))))
+
+  (check-equal?
+   (length (stream->list
+            (all (logic
+                   ((a 1 2 3) is {#t #f})
+                   ((b) is {#t #f})
+                   ((b) is {#t #f})
+                   ((c) is {#t #f})
+                   (bar 1) ; maybe this should be disallowed...
+                   ((bar 2) is {#t #t})))))
+   16))

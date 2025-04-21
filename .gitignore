@@ -6,3 +6,4 @@ compiled/
 scribblings/
 !scribblings/*.scrbl
 doc/
+.vscode

@@ -4,7 +4,7 @@
           (for-syntax racket)
           (for-label racket minidusa syntax-spec-v3))
 
-@(define eval (make-base-eval '(require racket minidusa)))
+@(define eval (make-base-eval '(require racket minidusa syntax-spec-v3 (for-syntax syntax/parse))))
 
 @title{miniDusa}
 @author{Ari Prakash and Zack Eisbach}
@@ -112,6 +112,70 @@ relations, but also @italic{functional relations} which relate inputs
 to exactly one choice of output. Any potential solutions that violate
 this constraint are rejected.
 
+As an example, the following miniDusa program (from the
+@(hyperlink "https://github.com/ariscript/minidusa/blob/main/README.md" "README"))
+demonstrates how finite choice may be used in order to conveniently generate
+characters and backstories for creative purposes.
+
+@examples[#:eval eval #:no-prompt
+          (define-dsl-syntax forbid logic-macro
+            (lambda (stx)
+              (syntax-parse stx
+                [(_ name p ...+)
+                 #'(decls ((name) is {#t})
+                          (((name) is {#f}) :- p ...))])))
+          
+          (define story-program
+            (logic #:import ([!= (compose not equal?)]
+                             string-append)
+              ((character 'hero) is {"Zack" "Ari" "Ben" "Michael"})
+              ((character 'sidekick) is {"Zack" "Ari" "Ben" "Michael"})
+              ((character 'villain) is {"Zack" "Ari" "Ben" "Michael"})
+
+              (code:comment "two characters with the same name must be the same character")
+              (forbid unique-roles ((character Char1) is X)
+                      ((character Char2) is X)
+                      ((!= Char1 Char2) is #t))
+
+              (code:comment "everyone must have a different job")
+              (((job C) is {"student" "TA" "prof" "unemployed"}) :- ((character C) is _))
+              (forbid unique-job ((job Char1) is X)
+                      ((job Char2) is X)
+                      ((!= Char1 Char2) is #t))
+
+              (code:comment "hero and villain cannot be from the same home")
+              (((home C) is {"CT" "NY" "MA"}) :- ((character C) is _))
+              (forbid backstory ((home 'hero) is X)
+                      ((home 'villain) is X))
+
+              (((story) is {Result}) :-
+                                     ((character 'hero) is Hero)
+                                     ((character 'sidekick) is Sidekick)
+                                     ((character 'villain) is Villain)
+                                     ((job 'hero) is HeroJob)
+                                     ((job 'villain) is VillainJob)
+                                     ((home 'hero) is HeroHome)
+                                     ((home 'villain) is VillainHome)
+                                     ((string-append "The heroic "
+                                                     HeroJob
+                                                     " "
+                                                     Hero
+                                                     " from "
+                                                     HeroHome
+                                                     " worked with "
+                                                     Sidekick
+                                                     " to thwart the wicked "
+                                                     VillainJob
+                                                     " "
+                                                     Villain
+                                                     " of "
+                                                     VillainHome) is Result))))
+
+          (define solution-stream (all story-program))
+          
+          (get (stream-first solution-stream) 'story)
+          ]
+
 @; this is the example from the readme with ...
 
 @section{Syntax}
@@ -148,7 +212,7 @@ this constraint are rejected.
  @tt{:-}). We also inclde a @tt{decls} form that can contain a block of
  declarations with no extra effect, much like @code{begin}; this is especially
  useful when @seclink["Extending" "extending"] miniDusa, as macros cannot expand
-into @italic{multiple} s-expressions.}
+ into @italic{multiple} s-expressions.}
 
 @section{Static Semantics}
 
@@ -166,16 +230,16 @@ require "running the function backwards" when solving, which is not yet supporte
 
 @; really, this is transparent for now...
 @defstruct*[solution ([database database?]) #:omit-constructor]{
-  Represents a solution to a program to be treated opaquely;
-  this can be queried using @code{has} and @code{get}.
+ Represents a solution to a program to be treated opaquely;
+ this can be queried using @code{has} and @code{get}.
 }
 
 @defthing[NONE none?]{
-  Represents the absence of a mapped-to value for a fact's attribute.
+ Represents the absence of a mapped-to value for a fact's attribute.
 }
 
 @defproc[(none? [arg any/c]) boolean?]{
-  Determines whether the argument is @code{NONE}.
+ Determines whether the argument is @code{NONE}.
 }
 
 @defproc[(all [program program?]) (stream? solution?)]{
@@ -285,29 +349,31 @@ be rewritten using similar macros:
 @codeblock|{
 ;; undirected graph macro
 (define-dsl-syntax graph logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ name (node [neighbor ...]) ...)
-       (define nodes (syntax-e #'(node ...)))
-       (define neighbors (syntax-e #'((neighbor ...) ...)))
-       (define/syntax-parse ((stxes ...) ...)
-         (for/list ([node nodes]
-                    [edges neighbors])
-           (for/list ([edge (syntax-e edges)])
-             #`(name #,node #,edge))))
-       #'(decls stxes ... ...
-                ((name X Y) :- (name Y X)))])))
+    (lambda (stx)
+      (syntax-parse stx
+        [(_ name (node [neighbor ...]) ...)
+         (define nodes (syntax-e #'(node ...)))
+         (define neighbors (syntax-e #'((neighbor ...) ...)))
+         (define/syntax-parse ((stxes ...) ...)
+           (for/list ([node nodes]
+                      [edges neighbors])
+             (for/list ([edge (syntax-e edges)])
+               #`(name #,node #,edge))))
+         #'(decls stxes ... ...
+                  ((name X Y) :- (name Y X)))])))
 
 (logic
- ;; graph macro allows graph specification using adjacency list notation
- (graph edge
-         ('a ['b 'c 'e])
-         ('c ['b 'd]))
- ((node X) :- (edge X _))
- (((color X) is {1 2 3}) :- (node X))
+  ;; graph macro allows graph specification using adjacency list notation
+  (graph edge
+          ('a ['b 'c 'e])
+          ('c ['b 'd]))
+  ((node X) :- (edge X _))
+  (((color X) is {1 2 3}) :- (node X))
 
- (forbid ok
-         (edge X Y)
-         ((color X) is C)
-         ((color Y) is C)))
+  ;; if the following condition is met, the solution is rejected
+  ;; this ensures that solutions are valid 3-colorings
+  (forbid ok
+          (edge X Y)
+          ((color X) is C)
+          ((color Y) is C)))
 }|

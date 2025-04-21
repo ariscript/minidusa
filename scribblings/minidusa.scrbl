@@ -1,7 +1,7 @@
 #lang scribble/manual
 
 @(require scribble/example minidusa syntax-spec-v3
-          (for-syntax racket/base)
+          (for-syntax racket)
           (for-label racket minidusa syntax-spec-v3))
 
 @(define eval (make-base-eval '(require racket minidusa)))
@@ -13,9 +13,10 @@
 
 miniDusa is a finite-choice logic programming DSL within Racket similar to
 @(hyperlink "https://dusa.rocks/docs/" "Dusa"). We implement the fact-set
-semantics as described by the
+semantics as described in the
 @(hyperlink "https://dl.acm.org/doi/pdf/10.1145/3704849"
-            "Finite-Choice Logic Programming") paper by Chris Martens, et al.
+            "Finite-Choice Logic Programming") paper
+by Chris Martens, Rob Simmons, and Michael Arntzenius.
 This DSL was implemented as our final project for Northeastern University's
 @(hyperlink "https://mballantyne.net/hyol/" "CS 3620 (Hack Your Own Language)")
 taught by Michael Ballantyne during Spring 2025.
@@ -23,10 +24,6 @@ taught by Michael Ballantyne during Spring 2025.
 miniDusa is implemented as a hosted DSL in Racket. A macro layer enables
 familiar syntax, static checks, and language extensions; runtime code is
 then used to compute and query solutions.
-
-@section{Motivation}
-
-@;TODO
 
 @section{Purpose and Concepts}
 
@@ -114,6 +111,8 @@ A finite-choice logic program also consists of not just facts and
 relations, but also @italic{functional relations} which relate inputs
 to exactly one choice of output. Any potential solutions that violate
 this constraint are rejected.
+
+@; this is the example from the readme with ...
 
 @section{Syntax}
 
@@ -277,3 +276,38 @@ While logic variables are treated hygienically, relation symbols currently
 are @italic{not}. Therefore, macros have to be careful about the way they deal
 with generating new relations: in the example above, the macro took a @tt{name}
 from the user as opposed to generating a fresh one.
+
+As another example, graph coloring programs (like the one in
+@(seclink "Purpose_and_Concepts" "Purpose and Concepts")) can
+be rewritten using similar macros:
+
+@; racketcode makes this explodeee
+@codeblock|{
+;; undirected graph macro
+(define-dsl-syntax graph logic-macro
+  (lambda (stx)
+    (syntax-parse stx
+      [(_ name (node [neighbor ...]) ...)
+       (define nodes (syntax-e #'(node ...)))
+       (define neighbors (syntax-e #'((neighbor ...) ...)))
+       (define/syntax-parse ((stxes ...) ...)
+         (for/list ([node nodes]
+                    [edges neighbors])
+           (for/list ([edge (syntax-e edges)])
+             #`(name #,node #,edge))))
+       #'(decls stxes ... ...
+                ((name X Y) :- (name Y X)))])))
+
+(logic
+ ;; graph macro allows graph specification using adjacency list notation
+ (graph edge
+         ('a ['b 'c 'e])
+         ('c ['b 'd]))
+ ((node X) :- (edge X _))
+ (((color X) is {1 2 3}) :- (node X))
+
+ (forbid ok
+         (edge X Y)
+         ((color X) is C)
+         ((color Y) is C)))
+}|

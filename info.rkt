@@ -12,4 +12,4 @@
 (define pkg-authors '(ari))
 (define license '(AGPL-3.0-only))
 (define test-include-paths '("private/" "tests/"))
-(define test-omit-paths '(#rx"compiled/" #rx"\\.rkt~"))
+(define test-omit-paths '(#rx"compiled/" #rx"\\.rkt~" #rx"README" #rx".DS_Store"))

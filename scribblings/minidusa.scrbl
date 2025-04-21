@@ -20,8 +20,9 @@ This DSL was implemented as our final project for Northeastern University's
 @(hyperlink "https://mballantyne.net/hyol/" "CS 3620 (Hack Your Own Language)")
 taught by Michael Ballantyne during Spring 2025.
 
-The DSL is implemented as a macro to specify the program itself, and runtime
-functions to solve it and query the results.
+miniDusa is implemented as a hosted DSL in Racket. A macro layer enables
+familiar syntax, static checks, and language extensions; runtime code is
+then used to compute and query solutions.
 
 @section{Motivation}
 
@@ -31,7 +32,8 @@ functions to solve it and query the results.
 
 Datalog (and variants) is a popular logic programming language characterized by
 writing facts, and rules that can deduce new facts if their premises are
-satisfied. Here is an example Datalog program and its translation into miniDusa:
+satisfied. Here is an example Datalog program that computes ancestry information
+about a small family, along with its translation into miniDusa:
 
 @verbatim{
  parent(alice, bob).
@@ -56,8 +58,9 @@ Another approach to logic programming is called answer-set programming, and it
 tries to compute @italic{all} possible deductions, meaning that answer set
 programs can evaluate to @italic{multiple} collections of assertions (each one
 known as a solution). miniDusa is also capable of emulating answer-set
-programming, here is an example written in
-@(hyperlink "https://potassco.org/clingo/" "clingo") and its translation:
+programming; here is an example program that computes all possible 3-colorings
+of a graph written in both @(hyperlink "https://potassco.org/clingo/" "clingo")
+and in miniDusa:
 
 @verbatim{
  % define 3 possible colors where each node can have exactly one
@@ -85,7 +88,7 @@ programming, here is an example written in
    (((ok) is {#f}) :- (edge X Y)
                    ((color X) is C)
                    ((color Y) is C))
-   (code:comment "facts (we will see more concise ways of writing this later)")
+   (code:comment "facts (this can be written more concisely using macros)")
    (edge 1 2)
    (edge 1 3)
    (edge 1 4)
@@ -108,8 +111,9 @@ Finite-choice logic programming is exemplified through the Dusa programming
 language.
 
 A finite-choice logic program also consists of not just facts and
-relations, but also functional relations which relate their inputs
-to exactly one choice of output.
+relations, but also @italic{functional relations} which relate inputs
+to exactly one choice of output. Any potential solutions that violate
+this constraint are rejected.
 
 @section{Syntax}
 
@@ -137,14 +141,61 @@ to exactly one choice of output.
           [(fn-id procedure?)
            (fn-expr procedure?)]]{
  The @code{logic} macro is the main entry point into miniDusa, and has two
- variants: with or without @(seclink "Imports" "imports").
+ variants: with or without @(seclink "Imports" "imports"). Imported
+ @tt{fn-id}s must be identifiers referring to procedures, as the name suggests.
 
  Just like Dusa, our program is comprised of a list of @tt{decl}s that that
  are either base facts or rules that fire based on premises (in the case with
  @tt{:-}). We also inclde a @tt{decls} form that can contain a block of
  declarations with no extra effect, much like @code{begin}; this is especially
- useful for writing @seclink["Extending" "extensions"] on top of miniDusa, as
- macros cannot expand out into @italic{multiple} s-expressions.}
+ useful when @seclink["Extending" "extending"] miniDusa, as macros cannot expand
+into @italic{multiple} s-expressions.}
+
+@section{Static Semantics}
+
+Each relation is a relation on a fixed number of terms. Thus, all uses of
+a relation symbol (i.e. the @tt{id} of an @tt{attribute}) in an attribute
+must occur with this fixed number of terms. This arity check is enforced statically,
+and omitted for imported relations (which may be imported variadic Racket functions).
+
+Logic variables cannot be bound in conclusions of rules; they must be bound
+in the premises, in order to make a sensible deduction. Similarly, logic
+variables cannot be bound in arguments to imported functions, as that would
+require "running the function backwards" when solving, which is not yet supported.
+
+@section{API}
+
+@; really, this is transparent for now...
+@defstruct*[solution ([database database?]) #:omit-constructor]{
+  Represents a solution to a program to be treated opaquely;
+  this can be queried using @code{has} and @code{get}.
+}
+
+@defthing[NONE none?]{
+  Represents the absence of a mapped-to value for a fact's attribute.
+}
+
+@defproc[(none? [arg any/c]) boolean?]{
+  Determines whether the argument is @code{NONE}.
+}
+
+@defproc[(all [program program?]) (stream? solution?)]{
+ Obtain a stream of all possible solutions of the given program
+ that is defined via a @code{logic} macro. The stream may be infinite,
+ and computing the next item may not always terminate.
+}
+
+@defproc[(has [solution solution?] [rel symbol?] [terms any/c] ...) boolean?]{
+ Determines whether a fact with the given relation symbol and terms
+ is present in the database.
+}
+
+@defproc[(get [solution solution?] [rel symbol?] [terms any/c] ...) any/c]{
+ Returns the value associated with the given relation symbol and terms
+ (considered as an attribute) if the solution @code{has} it.
+ If the relation is not a functional relation, then @code{NONE} is returned.
+ If the solution does not have such a fact, an error is raised.
+}
 
 @section{Imports}
 
@@ -222,16 +273,7 @@ system. We allow macros to expand into more than one declaration by way of the
  declarations (rules or facts).
 }
 
-A limitation that miniDusa macros currently have is that macros are not truly
-hygenic, as our runtime representation uses raw symbols or procedures as our
-relation names. Therefore, macros have to be careful about the way they deal
+While logic variables are treated hygienically, relation symbols currently
+are @italic{not}. Therefore, macros have to be careful about the way they deal
 with generating new relations: in the example above, the macro took a @tt{name}
-from the user since we do not know what other names might be used already.
-
-@section{API}
-
-@defproc[(all [program program?]) (stream? solution?)]{
- Obtain a stream of all possible solutions of the given program.
- The stream may be infinite, and computing the next item may not
- always terminate.
-}
+from the user as opposed to generating a fresh one.

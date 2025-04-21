@@ -8,7 +8,11 @@
          rule-frag
          rule
          program
-         all)
+         all
+         has
+         get
+         NONE
+         none?)
 
 (require racket/stream
          "database.rkt")
@@ -466,15 +470,26 @@
 
 
 ;; has: Solution Symbol Datum ... -> Bool
-;; Returns `#t` if the given proposition exists in this solution.
-;; Raises an error if the number of arguments provided does not match the
-;; number of arguments defined in the original relation.
+;; Returns `#t` if the given relation on the provided terms exists in
+;; this solution, either as a functional relation or a normal relation
+(define (has sol rel . terms)
+  (define (same-attr f)
+    (and (equal? (fact-rel f) rel)
+         (equal? (fact-terms f) terms)))
+  ;; TODO: maybe raise an error for unexpected arguments / etc?
+  (not (db-empty? (db-filter same-attr (solution-database sol)))))
 
 ;; get: Solution Symbol Datum ... -> Datum
-;; Returns the value associated with the given proposition in this
-;; solution.
-;; Raises an error if the number of arguments provided does not match the
-;; number of arguments defined in the original relation.
+;; Returns the value associated with the given attribute in this
+;; solution, if one exists. Raises an error if the attribute is not
+;; in the solution; returns NONE if the attribute is not a functional relation
+(define (get sol rel . terms)
+  (define (same-attr f)
+    (and (equal? (fact-rel f) rel)
+         (equal? (fact-terms f) terms)))
+  ;; TODO: maybe raise an error for unexpected arguments / etc?
+  ;; TODO: this raises a bad error currently when the fact is not found
+  (fact-value (db-first (db-filter same-attr (solution-database sol)))))
 
 ;; lookup: Solution Symbol Datum ... -> [ListOf [ListOf Datum]]
 ;; Query the solution for a proposition of the form provided. Providing
@@ -489,12 +504,32 @@
 (module+ test
   (require rackunit)
 
+  (define simple-program
+    (program
+     (list (rule (rule-frag 'foo '(1) '(a)) '()))
+     '()))
+  
   (check-equal?
-   (stream->list (all (program
-                       (list (rule (rule-frag 'foo '(1) '(a)) '()))
-                       '())))
+   (stream->list (all simple-program))
    (list (solution (set (fact 'foo '(1) 'a)))))
 
+  (check-equal?
+   (has (stream-first (all simple-program)) 'foo 1)
+   #t)
+  
+  (check-equal?
+   (has (stream-first (all simple-program)) 'foo 2)
+   #f)
+
+  (check-equal?
+   (get (stream-first (all simple-program)) 'foo 1)
+   'a)
+
+  (check-exn
+   ;; TODO: make this error message better
+   #rx""
+   (lambda () (get (stream-first (all simple-program)) 'foo 2)))
+  
   ;; we can run imported relations
   (check-equal?
    (stream->list (all (program

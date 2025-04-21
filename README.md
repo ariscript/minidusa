@@ -50,14 +50,14 @@ order to conveniently generate characters and backstories for creative purposes.
 
     ;; two characters with the same name must be the same character
     (forbid unique-roles ((character Char1) is X)
-                        ((character Char2) is X)
-                        ((!= Char1 Char2) is #t))
+                         ((character Char2) is X)
+                         ((!= Char1 Char2) is #t))
 
     ;; everyone must have a different job
     (((job C) is {"student" "TA" "prof" "unemployed"}) :- ((character C) is _))
     (forbid unique-job ((job Char1) is X)
-                      ((job Char2) is X)
-                      ((!= Char1 Char2) is #t))
+                       ((job Char2) is X)
+                       ((!= Char1 Char2) is #t))
 
     ;; hero and villain cannot be from the same home
     (((home C) is {"CT" "NY" "MA"}) :- ((character C) is _))
@@ -65,27 +65,27 @@ order to conveniently generate characters and backstories for creative purposes.
                       ((home 'villain) is X))
 
     (((story) is {Result}) :-
-                          ((character 'hero) is Hero)
-                          ((character 'sidekick) is Sidekick)
-                          ((character 'villain) is Villain)
-                          ((job 'hero) is HeroJob)
-                          ((job 'villain) is VillainJob)
-                          ((home 'hero) is HeroHome)
-                          ((home 'villain) is VillainHome)
-                          ((string-append "The heroic "
-                                          HeroJob
-                                          " "
-                                          Hero
-                                          " from "
-                                          HeroHome
-                                          " worked with "
-                                          Sidekick
-                                          " to thwart the wicked "
-                                          VillainJob
-                                          " "
-                                          Villain
-                                          " of "
-                                          VillainHome) is Result))))
+                           ((character 'hero) is Hero)
+                           ((character 'sidekick) is Sidekick)
+                           ((character 'villain) is Villain)
+                           ((job 'hero) is HeroJob)
+                           ((job 'villain) is VillainJob)
+                           ((home 'hero) is HeroHome)
+                           ((home 'villain) is VillainHome)
+                           ((string-append "The heroic "
+                                           HeroJob
+                                           " "
+                                           Hero
+                                           " from "
+                                           HeroHome
+                                           " worked with "
+                                           Sidekick
+                                           " to thwart the wicked "
+                                           VillainJob
+                                           " "
+                                           Villain
+                                           " of "
+                                           VillainHome) is Result))))
 
 ;; we generate lots of story strings; we query the first such string below
 (define solution-stream (all story-program))

@@ -40,7 +40,7 @@ enabled by [syntax-spec](https://docs.racket-lang.org/syntax-spec-v3/index.html)
 The following miniDusa example demonstrates how finite choice may be used in
 order to conveniently generate characters and backstories for creative purposes.
 
-```
+```racket
 (define story-program
   (logic #:import ([!= (compose not equal?)]
                   string-append)

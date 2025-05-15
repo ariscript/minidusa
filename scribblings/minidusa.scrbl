@@ -4,7 +4,8 @@
           (for-syntax racket)
           (for-label racket minidusa syntax-spec-v3))
 
-@(define eval (make-base-eval '(require racket minidusa syntax-spec-v3 (for-syntax syntax/parse))))
+@(define eval (make-base-eval '(require racket minidusa syntax-spec-v3
+                                        (for-syntax syntax/parse))))
 
 @title{miniDusa}
 @author{Ari Prakash and Zack Eisbach}
@@ -113,7 +114,8 @@ to exactly one choice of output. Any potential solutions that violate
 this constraint are rejected.
 
 As an example, the following miniDusa program (from the
-@(hyperlink "https://github.com/ariscript/minidusa/blob/main/README.md" "README"))
+@(hyperlink "https://github.com/ariscript/minidusa/blob/main/README.md"
+            "README"))
 demonstrates how finite choice may be used in order to conveniently generate
 characters and backstories for creative purposes.
 
@@ -132,13 +134,15 @@ characters and backstories for creative purposes.
               ((character 'sidekick) is {"Zack" "Ari" "Ben" "Michael"})
               ((character 'villain) is {"Zack" "Ari" "Ben" "Michael"})
 
-              (code:comment "two characters with the same name must be the same character")
+              (code:comment
+               "two characters with the same name must be the same character")
               (forbid unique-roles ((character Char1) is X)
                       ((character Char2) is X)
                       ((!= Char1 Char2) is #t))
 
               (code:comment "everyone must have a different job")
-              (((job C) is {"student" "TA" "prof" "unemployed"}) :- ((character C) is _))
+              (((job C) is {"student" "TA" "prof" "unemployed"})
+               :- ((character C) is _))
               (forbid unique-job ((job Char1) is X)
                       ((job Char2) is X)
                       ((!= Char1 Char2) is #t))
@@ -173,8 +177,7 @@ characters and backstories for creative purposes.
 
           (define solution-stream (all story-program))
           
-          (get (stream-first solution-stream) 'story)
-          ]
+          (get (stream-first solution-stream) 'story)]
 
 @; this is the example from the readme with ...
 
@@ -218,13 +221,15 @@ characters and backstories for creative purposes.
 
 Each relation is a relation on a fixed number of terms. Thus, all uses of
 a relation symbol (i.e. the @tt{id} of an @tt{attribute}) in an attribute
-must occur with this fixed number of terms. This arity check is enforced statically,
-and omitted for imported relations (which may be imported variadic Racket functions).
+must occur with this fixed number of terms. This arity check is enforced
+statically, and omitted for imported relations (which may be imported variadic
+Racket functions).
 
 Logic variables cannot be bound in conclusions of rules; they must be bound
 in the premises, in order to make a sensible deduction. Similarly, logic
 variables cannot be bound in arguments to imported functions, as that would
-require "running the function backwards" when solving, which is not yet supported.
+require "running the function backwards" when solving, which is not yet
+supported.
 
 @section{API}
 

@@ -27,3 +27,38 @@ Question:
   other submission opportunities?
   - Maybe if you aren't in the proceedings its okay?
   - Cameron probably knows this answer
+
+
+## Meeting Notes 5.21.25
+
+Michael wasn't sure exactly what the merits of something like Scheme Workshop
+vs ICFP Experience Report were, but Matthias later had more thoughts
+- Could write something for workshop if it is non-archival, but that runs the
+  risk of not having enough differentiating. Could also just give a talk at the
+  workshop with no corresponding proceedings to get feedback
+- We can spend a few weeks working / trying to figure things out, then reassess
+
+Potential contributions / talking points: 
+
+1. Easier to write (especially on the front end)
+- If we had full feature parity, we could compare LOC
+- This is more of a `syntax-spec` story, not necessarily unique to this impl
+- Demonstrates how `syntax-spec` works with syntax that isn't so Racket-like
+- IDE support, like binding arrows and rename refactoring (with much less code)
+
+2. Extends Dusa with macros, enabling more domain-specific programs
+- The macros that implement features that are a part of the language (like
+  `#demand` and `#forbid` stuff, perhaps `#lazy`/etc) are less interesting,
+  since this is just a (perhaps convenient) implementation strategy
+- Enabling users to write their own macros to model data better is a much more
+  compelling story: abstracts over how data is being encoded into the solver
+
+3. Extends Dusa with better interoperability with the host (Racket)
+- We support arbitrary builtins; Dusa could too but that is non-trivial
+- There is a lot of opportunity for exploration here: what can now be expressed
+  that was hard/impossible before?
+
+Our current implementation already has a _bit_ in each of these regards, but
+there is room to make things a lot more fleshed out (especially point 3).
+Remember, things should be macros _for a reason_---using macros in it of itself
+is not a meaningful contribution.

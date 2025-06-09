@@ -104,8 +104,8 @@
     #:datum-literals (is :-)
     ; we require two choices since a choice of one is
     ; not really a choice
-    [(_ is {_ _ ...+}) #t]  ; fact
-    [((_ is {_ _ ...+}) :- _ ...+) #t]  ; rule
+    [[_ (_ is {_ _ ...+})] #t]  ; fact
+    [[_ ((_ is {_ _ ...+}) :- _ ...+)] #t]  ; rule
     [_ #f]))
 
 ;; MutSymbolTable MutSymbolSet DeclSyntax -> [ListOf RacketSyntax]
@@ -118,11 +118,11 @@
     (syntax-parse decl-stx
       #:datum-literals (decls :-)
       [(decls d ...) (flatten (map compile-decl (attribute d)))]
-      [(conc :- prems ...+)
+      [[_ (conc :- prems ...+)]
        #:with (prem ...)
        (map ((curry compile-prem) arities imports) (attribute prems))
        (list #`(rt:rule #,(compile-conc #'conc) (list prem ...)))]
-      [conc
+      [[_ conc]
        (list #`(rt:rule #,(compile-conc #'conc) '()))])))
 
 ;; MutSymbolTable MutSymbolSet ConclusionSyntax -> RacketSyntax
@@ -179,7 +179,7 @@
                              #'name))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
-(define RESERVED-NAMES '(is :- choice decls))
+(define RESERVED-NAMES '(is :- choice  ))
 
 ;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;

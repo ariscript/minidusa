@@ -14,12 +14,14 @@
 
 (syntax-spec
  (binding-class logic-var)
+ (binding-class rel-var)
  (extension-class logic-macro #:binding-space minidusa)
 
  ;; (logic/importing [<imp> ...] <decl> ...)
  (host-interface/expression
-  (logic/importing [i:imp ...] d:decl ...)
-  (compile-logic #'(i ...) #'(d ...)))
+   (logic/importing [i:imp ...] d:decl ...)
+   #:binding (scope (import d) ...)
+   (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
  ;;         | [x:id e:racket-expr]
@@ -34,15 +36,36 @@
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
  ;;          | (decls <decl> ...)                 ; nested (for macros)
- (nonterminal decl
+ (nonterminal/exporting decl
    #:allow-extension logic-macro
 
-   (c:conclusion (~datum :-) p:premise ...+)
-   #:binding (nest p ... c)
-
    ((~datum decls) d:decl ...)
+   #:binding [(re-export d) ...]
+   
+   (~> (~and d
+             ;; drill down to find the relation name, then extract for binding
+             ;; we can always do this, since we don't expand macros here
+             (~or (r:id _ ...)
+                  ((r:id _ ...) (~datum :-) _ ...+)
+                  ((r:id _ ...) (~datum is) {_ ...+})
+                  (((r:id _ ...) (~datum is) {_ ...+}) (~datum :-) _ ...+)))
+       
+       (if (lookup #'r (binding-class-predicate rel-var))
+           #'[(#%ref/rel r) d]     ; if r has been bound as a rel-var already
+           #'[(#%bind/rel r) d]))
+   
+   [r:rel (c:conclusion (~datum :-) p:premise ...+)]
+   #:binding [(re-export r) (nest p ... c)]
 
-   c:conclusion)
+   [r:rel c:conclusion]
+   #:binding (re-export r))
+
+ 
+ (nonterminal/exporting rel
+   ((~datum #%bind/rel) r:rel-var)
+   #:binding (export r)
+
+   ((~datum #%ref/rel) r:rel-var))
 
  ;; <conclusion> ::= <attr>
  ;;                | (<attr> is {<logic-term> ...+})
@@ -78,9 +101,9 @@
            #'(#%bind v)))
 
    ;; TODO: is there a way to make this "private"?
-   (#%bind v:logic-var)
+   ((~datum #%bind) v:logic-var)
    #:binding (export v)
-   (#%ref v:logic-var)
+   ((~datum #%ref) v:logic-var)
    ;; TODO: maybe make this more expressive by allowing `racket-expr`s,
    ;; perhaps wrapped in a boundary form (for both syntax and checking)
    n:number
@@ -112,7 +135,7 @@
    (rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
                               '()))
                '()))
-
+  
   (check-equal?
    (logic
      ((foo 2) :- (foo 1))

@@ -1,4 +1,16 @@
-Things we need to do:
+In progress:
+- `rel-var` appearing in Racket expressions is not allowed, which is preventing
+  us from adding in import sugar
+- If we keep syntax objects around at runtime and return them in solutions, how
+  are supposed to write any tests? Should this be exposed to end users? If not,
+  how will _they_ disambiguate?
+  - We also have to actually keep the syntax objects around, and compare with
+    the right notions of equality (`bound-identifier=?` apparently)
+- Better motivating examples for macro hygeine
+
+Direct next steps:
+- Open rules, `is?`
+  - Then, the only Dusa features unsupported are running things backwards
 - Allow arbitrary expressions (maybe with syntactic boundary for parsing)
 - See `TODO.md` for more fixes and clean-ups
   - Maybe some stuff from there should be moved here...
@@ -10,22 +22,15 @@ Things we need to do:
 - `#lazy`, program transformation implemented as a macro
   - Maybe this generates fresh relation names which should work
   - This could be cool, but isn't necessarily key that it's a macro
-- Open rules, `is?`
-  - Then, the only Dusa features unsupported are running things backwards
 
 - Transformation to allow nesting
   - This is apparently a non-local change (think about the structure of the
     spec itself; apparently drilling down wouldn't work either)
-- Make generating fresh relation names better!
-  - This should be doable using a rewrite rule in the spec
-    - Basically mirrors a bit of the `attribute` syntax to drill down (one or
-      two parens worth) and pick out the name
-    - Is it possible to "undo" this before passing to the compiler?
-    - We would have to keep syntax objects around at runtime, then (review
-      previous notes to see which notion of equality!)
-  - Maybe there are questions about whether to allow macros in more positions,
-    like in logic variable positions. Think about logic variable freshness and
-    whether that _actually_ comes up without this?
+- Maybe there are questions about whether to allow macros in more positions,
+  like in logic variable positions. Think about logic variable freshness and
+  whether that _actually_ comes up without this?
+  - Currently, we get nothing from fresh logic variables. Allowing macro
+    expansion on RHS of `:-`s could make this actually work
 
 - Parse Dusa test cases and benchmark / compare
   - Then again, `mini` absolves us of these issues

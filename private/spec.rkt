@@ -20,18 +20,22 @@
  ;; (logic/importing [<imp> ...] <decl> ...)
  (host-interface/expression
    (logic/importing [i:imp ...] d:decl ...)
-   #:binding (scope (import d) ...)
+   #:binding (scope (import i) ... (import d) ...)
    (compile-logic #'(i ...) #'(d ...)))
 
  ;; <imp> ::= x:racket-var
  ;;         | [x:id e:racket-expr]
- (nonterminal imp
-   [x:id e:racket-expr]
-
+ (nonterminal/exporting imp
    ;; if we have a racket-var, that is shorthand for binding it to
    ;; a rel-var with the same name, so we expand accordingly
+   ;; TODO: this is broken right now...
    (~> x:id
-       #'[x x]))
+       #'[x x])
+
+   ;; there is no need to disambiguate between binding and reference
+   ;; occurrences here, because you can only bind in an import
+   [x:rel-var e:racket-expr]
+   #:binding (export x))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
@@ -88,8 +92,8 @@
    #:binding (scope (import a) nested))
 
  ;; <attr> ::= (<ID> <logic-term> ...)
- (nonterminal/exporting attr
-   (name:id t:logic-term ...)
+ (nonterminal/exporting attr   
+   (name:rel-var t:logic-term ...)
    #:binding [(re-export t) ...])
 
  ;; <logic-term> ::= <ID>
@@ -155,12 +159,23 @@
                (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
                               '()))))
 
+  ;; we disallow binding relation variables on RHS of :-
+  (check-exn
+   #rx"not bound as rel-var"
+   (lambda ()
+     (convert-compile-time-error
+      (logic ((foo X) :- ((bar) is X) (baz))))))
+  
   (check-equal?
    (logic
-     ((foo X) :- ((bar) is X) (baz)))
-   (rt:program (list (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+     (bar)
+     ((foo X) :- ((bar) is X) (baz))
+     (baz))
+   (rt:program (list (rt:rule (rt:rule-frag 'bar '() '()) '())
+                     (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
                               (list (rt:fact 'bar '() (rt:variable 'X))
-                                    (rt:fact 'baz '()))))
+                                    (rt:fact 'baz '())))
+                     (rt:rule (rt:rule-frag 'baz '() '()) '()))
                '()))
 
   ;; some error cases
@@ -221,12 +236,23 @@
 
   (check-equal?
    (logic
+     ;; these are unbound relation names, because this is a placeholder example
+     ;; this is a way to declare that
+     ((region R) :- (region R))
+     ((adjacent R S) :- (adjacent R S))
+     
      (((terrain R) is {'mountain 'forest 'ocean}) :- (region R))
      (((terrain R) is {'forest 'ocean})
       :-
       (adjacent R S) ((terrain S) is 'ocean)))
    (rt:program
-    '()
+    (list
+     (rt:rule
+      (rt:rule-frag 'region (list (rt:variable 'R)) '())
+      (list (rt:fact 'region (list (rt:variable 'R)))))
+     (rt:rule
+      (rt:rule-frag 'adjacent (list (rt:variable 'R) (rt:variable 'S)) '())
+      (list (rt:fact 'adjacent (list (rt:variable 'R) (rt:variable 'S))))))
     (list
      (rt:rule
       (rt:rule-frag 'terrain (list (rt:variable 'R)) '(mountain forest ocean))
@@ -258,8 +284,13 @@
                    (list (rt:fact + '(1 2 3) (rt:variable 'X)))))
     '()))
 
+  ;; TODO: these are broken right now, since the RHS is seen as a rel-var now
+  ;; to get around it, we use...
+  (define add1* add1)
+  ;; once we resolve this, we can replace `([add1 add1*])` with `[add1]`
+  
   (check-equal?
-   (logic #:import [add1]
+   (logic #:import ([add1 add1*])
      ((foo) :- ((add1 0) is 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
@@ -267,7 +298,7 @@
     '()))
 
   (check-equal?
-   (logic #:import (add1)
+   (logic #:import ([add1 add1*])
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
    (rt:program
@@ -281,24 +312,24 @@
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1*])
                                    (add1 0)))))
 
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1*])
                                    ((add1 0) is {1})))))
 
   (check-exn
    #rx"imported relations must be used with 'is'"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1*])
                                    ((foo) :- (add1 0))))))
 
   (check-exn
    #rx"cannot run imported relations backwards"
    (lambda ()
      (convert-compile-time-error
-      (logic #:import [add1]
+      (logic #:import ([add1 add1*])
         ((foo X) :- ((add1 X) is 2)))))))

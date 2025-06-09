@@ -328,6 +328,11 @@
                                    ((foo) :- (add1 0))))))
 
   (check-exn
+   #rx"identifier already defined"
+   (lambda ()
+     (convert-compile-time-error (logic #:import ([x add1] [x sub1])))))
+  
+  (check-exn
    #rx"cannot run imported relations backwards"
    (lambda ()
      (convert-compile-time-error

@@ -85,10 +85,12 @@
         [(d ...)
          ;; like define/syntax-parse, but shorter
          #:with (deduce-rule ...)
-         (flatten (map compile-decl (filter (negate is-choose?) (attribute d))))
+         (flatten (map compile-decl
+                       (filter (negate is-choose?) (attribute d))))
 
          #:with (choose-rule ...)
-         (flatten (map compile-decl (filter is-choose? (attribute d))))
+         (flatten (map compile-decl
+                       (filter is-choose? (attribute d))))
 
          #'(rt:program (list deduce-rule ...)
                        (list choose-rule ...))])))
@@ -99,6 +101,7 @@
 
 ;; DeclSyntax -> Bool
 ;; determines if the given declaration is a choice-based rule
+;; Note that DeclSyntax _does_ include the expanded relation occurrence
 (define (is-choose? decl-stx)
   (syntax-parse decl-stx
     #:datum-literals (is :-)
@@ -111,6 +114,7 @@
 ;; MutSymbolTable MutSymbolSet DeclSyntax -> [ListOf RacketSyntax]
 ;; This returns a list so that we can expand to multiple decls in the case of
 ;; a `decls` block.
+;; Note that DeclSyntax _does_ include the expanded relation occurrence
 (define (compile-decl arities imports decl-stx)
   ; partial application to thread around references to the symbol tables
   (let ([compile-conc ((curry compile-conc) arities imports)]
@@ -118,6 +122,7 @@
     (syntax-parse decl-stx
       #:datum-literals (decls :-)
       [(decls d ...) (flatten (map compile-decl (attribute d)))]
+      ;; get rid of the outer ref
       [[_ (conc :- prems ...+)]
        #:with (prem ...)
        (map ((curry compile-prem) arities imports) (attribute prems))

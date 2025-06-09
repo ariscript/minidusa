@@ -19,23 +19,23 @@
 
  ;; (logic/importing [<imp> ...] <decl> ...)
  (host-interface/expression
-   (logic/importing [i:imp ...] d:decl ...)
-   #:binding (scope (import i) ... (import d) ...)
-   (compile-logic #'(i ...) #'(d ...)))
+   (logic/importing i:imps d:decl ...)
+   #:binding (nest i (scope (import d) ...))
+   (compile-logic #'i #'(d ...)))
 
+ ;; <imps> (<imp> ...)
  ;; <imp> ::= x:racket-var
  ;;         | [x:id e:racket-expr]
- (nonterminal/exporting imp
-   ;; if we have a racket-var, that is shorthand for binding it to
-   ;; a rel-var with the same name, so we expand accordingly
-   ;; TODO: this is broken right now...
-   (~> x:id
-       #'[x x])
+ (nonterminal/nesting imps (nested)
+   ([x:rel-var e:racket-expr] ...)
+   #:binding [e ... (scope (bind x) ... nested)]
 
-   ;; there is no need to disambiguate between binding and reference
-   ;; occurrences here, because you can only bind in an import
-   [x:rel-var e:racket-expr]
-   #:binding (export x))
+   ;; If we have a racket-var, that is shorthand for binding it to
+   ;; a rel-var with the same name, so we expand accordingly.
+   ;; This case comes after the core case so that it only matches
+   ;; when there are shorthands that need to expand.
+   (~> ((~or* (~and x:id (~bind [e #'x])) [x:id e:expr]) ...)
+       #'([x e] ...)))
 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule

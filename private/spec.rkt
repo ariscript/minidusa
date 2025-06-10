@@ -17,15 +17,15 @@
  (binding-class rel-var)
  (extension-class logic-macro #:binding-space minidusa)
 
- ;; (logic/importing [<imp> ...] <decl> ...)
+ ;; (logic/importing <imps> <decl> ...)
  (host-interface/expression
    (logic/importing i:imps d:decl ...)
    #:binding (nest i (scope (import d) ...))
    (compile-logic #'i #'(d ...)))
 
- ;; <imps> (<imp> ...)
- ;; <imp> ::= x:racket-var
- ;;         | [x:id e:racket-expr]
+ ;; <imps> ::= (<imp> ...)
+ ;; <imp>  ::= x:racket-var
+ ;;          | [x:id e:racket-expr]
  (nonterminal/nesting imps (nested)
    ([x:rel-var e:racket-expr] ...)
    #:binding [e ... (scope (bind x) ... nested)]
@@ -283,14 +283,9 @@
           (rt:rule (rt:rule-frag 'bar (list (rt:variable 'X)) '())
                    (list (rt:fact + '(1 2 3) (rt:variable 'X)))))
     '()))
-
-  ;; TODO: these are broken right now, since the RHS is seen as a rel-var now
-  ;; to get around it, we use...
-  (define add1* add1)
-  ;; once we resolve this, we can replace `([add1 add1*])` with `[add1]`
   
   (check-equal?
-   (logic #:import ([add1 add1*])
+   (logic #:import [add1]
      ((foo) :- ((add1 0) is 1)))
    (rt:program
     (list (rt:rule (rt:rule-frag 'foo '() '())
@@ -298,7 +293,7 @@
     '()))
 
   (check-equal?
-   (logic #:import ([add1 add1*])
+   (logic #:import ([add1 add1])
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
    (rt:program
@@ -312,19 +307,19 @@
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import ([add1 add1*])
+     (convert-compile-time-error (logic #:import [add1]
                                    (add1 0)))))
 
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import ([add1 add1*])
+     (convert-compile-time-error (logic #:import [add1]
                                    ((add1 0) is {1})))))
 
   (check-exn
    #rx"imported relations must be used with 'is'"
    (lambda ()
-     (convert-compile-time-error (logic #:import ([add1 add1*])
+     (convert-compile-time-error (logic #:import [add1]
                                    ((foo) :- (add1 0))))))
 
   (check-exn
@@ -336,5 +331,5 @@
    #rx"cannot run imported relations backwards"
    (lambda ()
      (convert-compile-time-error
-      (logic #:import ([add1 add1*])
+      (logic #:import [add1]
         ((foo X) :- ((add1 X) is 2)))))))

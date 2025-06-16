@@ -104,11 +104,14 @@
 ;; Note that DeclSyntax _does_ include the expanded relation occurrence
 (define (is-choose? decl-stx)
   (syntax-parse decl-stx
-    #:datum-literals (is :-)
+    #:datum-literals (is is? :-)
     ; we require two choices since a choice of one is
     ; not really a choice
-    [[_ (_ is {_ _ ...+})] #t]  ; fact
-    [[_ ((_ is {_ _ ...+}) :- _ ...+)] #t]  ; rule
+    [[_ (_ is {_ _ ...+})] #t]
+    [[_ ((_ is {_ _ ...+}) :- _ ...+)] #t]
+    ;; an `is?` rule is always a choice (with not firing)
+    [[_ (_ is? {_ ...+})] #t]
+    [[_ ((_ is? {_ ...+}) :- _ ...+)] #t]
     [_ #f]))
 
 ;; MutSymbolTable MutSymbolSet DeclSyntax -> [ListOf RacketSyntax]
@@ -146,18 +149,22 @@
               "imported relations cannot appear in conclusions"
               name)))])
     (syntax-parse conc-stx
-      #:datum-literals (is)
-      [((name t ...) is {ch ...+})
+      #:datum-literals (is is?)
+      [((name t ...) (~or is (~and is? is??)) {ch ...+})
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with (comp-ch ...) (map compile-term (attribute ch))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        (raise-if-imported! #'name)
-       #'(rt:rule-frag rel-var-comped (list comp-t ...) (list comp-ch ...))]
+       #`(rt:rule-frag rel-var-comped
+                       (list comp-t ...)
+                       (list comp-ch ...)
+                       ; if is?? is bound, we have an `is?` rule, so we pass #t
+                       #,(and (attribute is??) #t))]
       [(name t ...)
        #:with (comp-t ...) (map compile-term (attribute t))
        #:with rel-var-comped (compile-rel-id #'name (length (attribute t)))
        (raise-if-imported! #'name)
-       #'(rt:rule-frag rel-var-comped (list comp-t ...) '())])))
+       #'(rt:rule-frag rel-var-comped (list comp-t ...) '() #f)])))
 
 ;; MutSymbolTable MutSymbolSet PremiseSyntax -> RacketSyntax
 (define (compile-prem arities imports prem-stx)
@@ -184,7 +191,7 @@
                              #'name))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
-(define RESERVED-NAMES '(is :- choice  ))
+(define RESERVED-NAMES '(is is? :- decls))
 
 ;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;

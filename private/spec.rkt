@@ -19,9 +19,9 @@
 
  ;; (logic/importing <imps> <decl> ...)
  (host-interface/expression
-   (logic/importing i:imps d:decl ...)
-   #:binding (nest i (scope (import d) ...))
-   (compile-logic #'i #'(d ...)))
+  (logic/importing i:imps d:decl ...)
+  #:binding (nest i (scope (import d) ...))
+  (compile-logic #'i #'(d ...)))
 
  ;; <imps> ::= (<imp> ...)
  ;; <imp>  ::= x:racket-var
@@ -51,9 +51,10 @@
              ;; we can always do this, since we don't expand macros here
              (~or (r:id _ ...)
                   ((r:id _ ...) (~datum :-) _ ...+)
-                  ((r:id _ ...) (~datum is) {_ ...+})
-                  (((r:id _ ...) (~datum is) {_ ...+}) (~datum :-) _ ...+)))
-       
+                  ((r:id _ ...) (~or (~datum is) (~datum is?)) {_ ...+})
+                  (((r:id _ ...) (~or (~datum is) (~datum is?)) {_ ...+})
+                   (~datum :-) _ ...+)))
+
        (if (lookup #'r (binding-class-predicate rel-var))
            #'[(#%ref/rel r) d]     ; if r has been bound as a rel-var already
            #'[(#%bind/rel r) d]))
@@ -73,10 +74,14 @@
 
  ;; <conclusion> ::= <attr>
  ;;                | (<attr> is {<logic-term> ...+})
+ ;;                | (<attr> is? {<logic-term> ...+})
  (nonterminal conclusion
    ;; it's important that this comes first, otherwise some things
    ;; are attempted to be parsed as logic-terms and explode
    (a:attr (~datum is) {t:logic-term ...+})
+   #:binding (scope (import a) (import t) ...)
+
+   (a:attr (~datum is?) {t:logic-term ...+})
    #:binding (scope (import a) (import t) ...)
 
    a:attr
@@ -136,7 +141,7 @@
   (check-equal?
    (logic
      (foo 1))
-   (rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '())
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '(1) '() #f)
                               '()))
                '()))
   
@@ -144,9 +149,9 @@
    (logic
      ((foo 2) :- (foo 1))
      (foo 1))
-   (rt:program (list (rt:rule (rt:rule-frag 'foo '(2) '())
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '(2) '() #f)
                               (list (rt:fact 'foo '(1))))
-                     (rt:rule (rt:rule-frag 'foo '(1) '())
+                     (rt:rule (rt:rule-frag 'foo '(1) '() #f)
                               '()))
                '()))
 
@@ -154,9 +159,9 @@
    (logic
      (foo "abc")
      ((bar #t 'a) is {1 2 #\c}))
-   (rt:program (list (rt:rule (rt:rule-frag 'foo '("abc") '())
+   (rt:program (list (rt:rule (rt:rule-frag 'foo '("abc") '() #f)
                               '()))
-               (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c))
+               (list (rt:rule (rt:rule-frag 'bar '(#t a) '(1 2 #\c) #f)
                               '()))))
 
   ;; we disallow binding relation variables on RHS of :-
@@ -171,11 +176,11 @@
      (bar)
      ((foo X) :- ((bar) is X) (baz))
      (baz))
-   (rt:program (list (rt:rule (rt:rule-frag 'bar '() '()) '())
-                     (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '())
+   (rt:program (list (rt:rule (rt:rule-frag 'bar '() '() #f) '())
+                     (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '() #f)
                               (list (rt:fact 'bar '() (rt:variable 'X))
                                     (rt:fact 'baz '())))
-                     (rt:rule (rt:rule-frag 'baz '() '()) '()))
+                     (rt:rule (rt:rule-frag 'baz '() '() #f) '()))
                '()))
 
   ;; some error cases
@@ -218,15 +223,18 @@
      (decls ((ancestor X Y) :- (parent X Y)))
      ((ancestor X Y) :- (parent X Z) (ancestor Z Y)))
    (rt:program
-    (list (rt:rule (rt:rule-frag 'parent '(alice bob) '()) '())
-          (rt:rule (rt:rule-frag 'parent '(bob carol) '()) '())
+    (list (rt:rule (rt:rule-frag 'parent '(alice bob) '() #f) '())
+          (rt:rule (rt:rule-frag 'parent '(bob carol) '() #f) '())
           (rt:rule (rt:rule-frag 'ancestor
-                                 (list (rt:variable 'X) (rt:variable 'Y)) '())
+                                 (list (rt:variable 'X) (rt:variable 'Y))
+                                 '()
+                                 #f)
                    (list
                     (rt:fact 'parent
                              (list (rt:variable 'X) (rt:variable 'Y)) )))
           (rt:rule (rt:rule-frag 'ancestor
-                                 (list (rt:variable 'X) (rt:variable 'Y)) '())
+                                 (list (rt:variable 'X) (rt:variable 'Y)) '()
+                                 #f)
                    (list
                     (rt:fact 'parent
                              (list (rt:variable 'X) (rt:variable 'Z)))
@@ -248,17 +256,19 @@
    (rt:program
     (list
      (rt:rule
-      (rt:rule-frag 'region (list (rt:variable 'R)) '())
+      (rt:rule-frag 'region (list (rt:variable 'R)) '() #f)
       (list (rt:fact 'region (list (rt:variable 'R)))))
      (rt:rule
-      (rt:rule-frag 'adjacent (list (rt:variable 'R) (rt:variable 'S)) '())
+      (rt:rule-frag 'adjacent (list (rt:variable 'R) (rt:variable 'S)) '() #f)
       (list (rt:fact 'adjacent (list (rt:variable 'R) (rt:variable 'S))))))
     (list
      (rt:rule
-      (rt:rule-frag 'terrain (list (rt:variable 'R)) '(mountain forest ocean))
+      (rt:rule-frag 'terrain
+                    (list (rt:variable 'R))
+                    '(mountain forest ocean) #f)
       (list (rt:fact 'region (list (rt:variable 'R)))))
      (rt:rule
-      (rt:rule-frag 'terrain (list (rt:variable 'R)) '(forest ocean))
+      (rt:rule-frag 'terrain (list (rt:variable 'R)) '(forest ocean) #f)
       (list
        (rt:fact 'adjacent (list (rt:variable 'R) (rt:variable 'S)))
        (rt:fact 'terrain (list (rt:variable 'S)) 'ocean))))))
@@ -269,7 +279,7 @@
    (logic #:import ([a add1])
      ((foo) :- ((a 0) is 1)))
    (rt:program
-    (list (rt:rule (rt:rule-frag 'foo '() '())
+    (list (rt:rule (rt:rule-frag 'foo '() '() #f)
                    (list (rt:fact add1 '(0) 1))))
     '()))
 
@@ -278,9 +288,9 @@
      ((foo) :- ((p 1 2) is 3))
      ((bar X) :- ((p 1 2 3) is X)))
    (rt:program
-    (list (rt:rule (rt:rule-frag 'foo '() '())
+    (list (rt:rule (rt:rule-frag 'foo '() '() #f)
                    (list (rt:fact + '(1 2) 3)))
-          (rt:rule (rt:rule-frag 'bar (list (rt:variable 'X)) '())
+          (rt:rule (rt:rule-frag 'bar (list (rt:variable 'X)) '() #f)
                    (list (rt:fact + '(1 2 3) (rt:variable 'X)))))
     '()))
   
@@ -288,7 +298,7 @@
    (logic #:import [add1]
      ((foo) :- ((add1 0) is 1)))
    (rt:program
-    (list (rt:rule (rt:rule-frag 'foo '() '())
+    (list (rt:rule (rt:rule-frag 'foo '() '() #f)
                    (list (rt:fact add1 '(0) 1))))
     '()))
 
@@ -297,8 +307,8 @@
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
    (rt:program
-    (list (rt:rule (rt:rule-frag 'foo '(1) '()) '())
-          (rt:rule (rt:rule-frag 'bar '() '())
+    (list (rt:rule (rt:rule-frag 'foo '(1) '() #f) '())
+          (rt:rule (rt:rule-frag 'bar '() '() #f)
                    (list (rt:fact 'foo (list (rt:variable 'X)))
                          (rt:fact add1 (list (rt:variable 'X)) 2))))
     '()))
@@ -332,4 +342,25 @@
    (lambda ()
      (convert-compile-time-error
       (logic #:import [add1]
-        ((foo X) :- ((add1 X) is 2)))))))
+        ((foo X) :- ((add1 X) is 2))))))
+
+  ;; is? rules
+  (check-equal?
+   (logic
+     (((a) is? {1}) :- ((a) is 1))
+     ((a) is {1})
+     ((a) is? {2 3}))
+   (rt:program
+    (list (rt:rule (rt:rule-frag 'a '() '(1) #f) '()))
+    (list
+     (rt:rule (rt:rule-frag 'a '() '(1) #t) (list (rt:fact 'a '() 1)))
+     (rt:rule (rt:rule-frag 'a '() '(2 3) #t) '()))))
+
+  ;; is? errors
+  (check-exn
+   #rx"expected attr" ;; FIXME: this is bad
+   (lambda ()
+     (convert-compile-time-error
+      (logic
+        ((foo) :- ((foo) is? 1))))))
+  )

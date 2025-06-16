@@ -225,4 +225,26 @@
                    ((c) is {#t #f})
                    (bar 1) ; maybe this should be disallowed...
                    ((bar 2) is {#t #t})))))
-   16))
+   16)
+
+  (check-equal?
+   (stream->list
+    (all (logic
+           ((a) is? {1}))))
+   (list (solution (db-of
+                    (fact 'a '() 1)))))
+
+  (check-equal?
+   (stream->list
+    (all (logic
+           ((a) is? {1 2})
+           ((b) :- ((a) is _))
+           (((a) is? {3}) :- (b)))))
+   (list (solution (db-of
+                    (fact 'a '() 1)
+                    (fact 'b '())))
+         (solution (db-of
+                    (fact 'a '() 2)
+                    (fact 'b '())))))
+
+  )

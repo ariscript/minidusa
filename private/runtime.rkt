@@ -66,7 +66,12 @@
 ;; An OpenFact is a (fact Symbol [ListOf Term] [Option Term])
 ;; It represents a fact that has not yet been fully grounded.
 
-;; A RuleFragment is (rule-frag Symbol [ListOf Term] [ListOf Term]).
+;; A Constraint is a (constraint Symbol [ListOf Datum] [ListOf Datum])
+;; It represents a constraint on any potnetial fact that would look like
+;; this one, where the values cannot be any of the ones in the value list.
+(struct constraint [rel terms none-of])
+
+;; A RuleFragment is (rule-frag Symbol [ListOf Term] [ListOf Term] Boolean)
 ;; It is an _internal representation_ of the source syntax, which in
 ;; general may contain variables. These can be combined to form rules
 ;; or facts (closed rules with no premises).
@@ -74,12 +79,13 @@
 ;; this is a difference from the surface <term> syntax; these nested
 ;; terms will be desugared in an ANF-like pass.
 
-;; A ClosedRuleFragment is (rule-frag Symbol [ListOf Datum] [ListOf Datum]).
+;; A ClosedRuleFragment is
+;; (rule-frag Symbol [ListOf Datum] [ListOf Datum] Boolean)
 ;; it represents a rule fragment where all variables have been substituted
 ;; for data. Note that a RuleFragment is "open by default", while in contrast
 ;; a Fact is "closed by default", hence the inconsistent naming convention
 
-(struct rule-frag [name terms choices] #:transparent)
+(struct rule-frag [name terms choices is??] #:transparent)
 
 ;; A Rule is a (rule RuleFragment [ListOf OpenFact])
 ;; It represents a conclusion which follows from the (0 or more) premises
@@ -449,7 +455,8 @@
   (define ground-term (make-term-grounder subst))
   (rule-frag (rule-frag-name open)
              (map ground-term (rule-frag-terms open))
-             (map ground-term (rule-frag-choices open))))
+             (map ground-term (rule-frag-choices open))
+             (rule-frag-is?? open)))
 
 ;; rule-frag->fact : ClosedRuleFragment -> Fact
 ;; PRECONDITION: the ClosedRuleFragment must be making 0 or 1 choices
@@ -506,12 +513,12 @@
 
   (define simple-program
     (program
-     (list (rule (rule-frag 'foo '(1) '(a)) '()))
+     (list (rule (rule-frag 'foo '(1) '(a) #f) '()))
      '()))
   
   (check-equal?
    (stream->list (all simple-program))
-   (list (solution (set (fact 'foo '(1) 'a)))))
+   (list (solution (db-of (fact 'foo '(1) 'a)))))
 
   (check-equal?
    (has (stream-first (all simple-program)) 'foo 1)
@@ -533,14 +540,14 @@
   ;; we can run imported relations
   (check-equal?
    (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() '())
+                       (list (rule (rule-frag 'foo '() '() #f)
                                    (list (fact add1 '(0) 1))))
                        '())))
    (list (solution (db-of (make-fact 'foo '())))))
 
   (check-equal?
    (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() '())
+                       (list (rule (rule-frag 'foo '() '() #f)
                                    (list (fact * '(0 1 2) 1))))
                        '())))
    (list (solution (db-of))))
@@ -548,7 +555,7 @@
   ;; example where we bind a variable based on an import
   (check-equal?
    (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() (list (variable 'X)))
+                       (list (rule (rule-frag 'foo '() (list (variable 'X)) #f)
                                    (list (fact + '(1 2 3 4) (variable 'X)))))
                        '())))
    (list (solution (db-of (make-fact 'foo '() 10))))))

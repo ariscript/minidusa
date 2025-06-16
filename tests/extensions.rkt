@@ -84,6 +84,14 @@
                                         ((color Y) is C))))))
    24)
 
+  (check-equal?
+   (stream->list
+    (all (logic
+           ((a) is? {1})
+           ((b) is {1})
+           (forbid ok ((a) is 1)))))
+   '())
+
   (define-dsl-syntax mydecl logic-macro
     (lambda (stx)
       (syntax-parse stx

@@ -79,6 +79,13 @@
                         ((foo) is {'b 'c}))))
    (list (solution (db-of (fact 'foo '() 'b)))))
 
+  ;; regression test: order of choices should not matter
+  (check-equal?
+   (stream->list (all (logic
+                        ((foo) is {'a 'b})
+                        ((foo) is {'c 'b}))))
+   (list (solution (db-of (fact 'foo '() 'b)))))
+
   (check-equal?
    (length (stream->list
             (all (logic
@@ -228,23 +235,23 @@
    16)
 
   (check-equal?
-   (stream->list
-    (all (logic
-           ((a) is? {1}))))
-   (list (solution (db-of
-                    (fact 'a '() 1)))))
+     (stream->list
+      (all (logic
+             ((a) is? {1}))))
+     (list (solution (db-of
+                      (fact 'a '() 1)))))
 
   (check-equal?
-   (stream->list
-    (all (logic
-           ((a) is? {1 2})
-           ((b) :- ((a) is _))
-           (((a) is? {3}) :- (b)))))
-   (list (solution (db-of
-                    (fact 'a '() 1)
-                    (fact 'b '())))
-         (solution (db-of
-                    (fact 'a '() 2)
-                    (fact 'b '())))))
+     (stream->list
+      (all (logic
+             ((a) is? {1 2})
+             ((b) :- ((a) is _))
+             (((a) is? {3}) :- (b)))))
+     (list (solution (db-of
+                      (fact 'a '() 1)
+                      (fact 'b '())))
+           (solution (db-of
+                      (fact 'a '() 2)
+                      (fact 'b '())))))
 
   )

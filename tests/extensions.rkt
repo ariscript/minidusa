@@ -90,7 +90,7 @@
            ((a) is? {1})
            ((b) is {1})
            (forbid ok ((a) is 1)))))
-   '())
+   (list (solution (database (set (fact 'ok '() #t)) (set)))))
 
   (define-dsl-syntax mydecl logic-macro
     (lambda (stx)

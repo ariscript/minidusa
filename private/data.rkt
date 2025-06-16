@@ -53,7 +53,7 @@
 ;; An OpenFact is a (fact Symbol [ListOf Term] [Option Term])
 ;; It represents a fact that has not yet been fully grounded.
 
-;; A Constraint is a (constraint Symbol [ListOf Datum] [ListOf Datum])
+;; A Constraint is a (constraint Symbol [ListOf Datum] [NEList Datum])
 ;; It represents a constraint on any potnetial fact that would look like
 ;; this one, where the values cannot be any of the ones in the value list.
 (struct constraint [rel terms none-of])
@@ -67,7 +67,7 @@
 ;; terms will be desugared in an ANF-like pass.
 
 ;; A ClosedRuleFragment is
-;; (rule-frag Symbol [ListOf Datum] [ListOf Datum] Boolean)
+;; (rule-frag Symbol [ListOf Datum] [ListOf Datum] [OneOf Boolean 'tried])
 ;; it represents a rule fragment where all variables have been substituted
 ;; for data. Note that a RuleFragment is "open by default", while in contrast
 ;; a Fact is "closed by default", hence the inconsistent naming convention

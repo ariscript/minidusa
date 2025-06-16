@@ -48,10 +48,11 @@
 ;; A SolutionResult is [Maybe DatabaseState]
 
 ;; An ConsistencyResult is one of:
-;; - 'inconsistent
+;; - (inconsistent SearchStack)
 ;; - #f
 ;; - DatabaseState
 ;; and represents a SolutionResult where an inconsistency may have been reached
+(struct inconsistent [stack])
 
 ;; A Substitution is a [HashOf Symbol Datum]
 ;; and represents a substitituon for variables in an OpenFact.
@@ -90,18 +91,18 @@
   ; also, all calls are in tail position, to prevent stack overflow
   (match (deduce (program-deduce-rules prog) db stack)
     [(db-state new-db new-st) (solve prog new-db new-st)]
-    ['inconsistent ; triggers a backtrack
-     (backtrack prog stack)]
+    [(inconsistent stack) (backtrack prog stack)]
     [#f
      ; if we could not deduce, we instead try to choose
      (match (choose (program-choose-rules prog) db stack)
        [(db-state new-db new-st) (solve prog new-db new-st)]
-       ['inconsistent ; triggers a backtrack
-        (backtrack prog stack)]
+       [(inconsistent stack) (backtrack prog stack)]
        [#f
-        ; if no new deductions or choices are left to be made, we are
-        ; saturated and have reached a solution!
-        (db-state db stack)])]))
+        ; valid solutions must have positive databases
+        ; otherwise, we treat it as inconsistent
+        (if (db-positive? db)
+            (db-state db stack)
+            (backtrack prog stack))])]))
 
 ;; backtrack : Logic SearchStack -> SolutionResult
 ;; Backtrack from the given search state and find a new solution to the given
@@ -121,6 +122,16 @@
                         (set-add (search-state-tried state) idx))
           (rest stack)))
 
+  ;; update-stack/constraint : SearchStack -> SearchStack
+  ;; update the top of the stack to track that we added a constraint.
+  (define (update-stack/constraint stack)
+    (define state (first stack))
+    (cons (search-state (search-state-database state)
+                        (struct-copy rule-frag (search-state-conclusion state)
+                                     [is?? 'tried])
+                        (search-state-tried state))
+          (rest stack)))
+
   (if (empty? stack) #f
       (let* ([current-state (first stack)]
              [current-db (search-state-database current-state)]
@@ -130,15 +141,27 @@
              ; for now, we choose the next choice in order, for easier testing
              ; we still use a set to enable future changes to the order
              [idx-to-try (add1 (apply max (set->list indices-tried)))])
-        (if (< idx-to-try (length all-choices))
-            (let ([new-fact (rule-frag->fact/choose conclusion idx-to-try)]
-                  [new-stack (update-stack stack idx-to-try)])
-              (if (consistent? current-db new-fact)
-                  (solve prog (db-cons new-fact current-db) new-stack)
-                  ; backtrack, but make the next choice
-                  (backtrack prog new-stack)))
-            ; if we ran out of choices, then pop off the stack
-            (backtrack prog (rest stack))))))
+
+        (cond [(< idx-to-try (length all-choices))
+               (define new-fact (rule-frag->fact/choose conclusion idx-to-try))
+               (define new-stack (update-stack stack idx-to-try))
+               (if (consistent? current-db new-fact)
+                   (solve prog (db-cons new-fact current-db) new-stack)
+                   ; backtrack, but make the next choice
+                   (backtrack prog new-stack))]
+              [(and (= idx-to-try (length all-choices))
+                    (equal? #t (rule-frag-is?? conclusion)))
+               (define new-constraint (rule-frag->constraint conclusion))
+               (define new-stack (update-stack/constraint stack))
+               (if (consistent? current-db new-constraint)
+                   (solve prog
+                          (db-add-constraint new-constraint current-db)
+                          new-stack)
+                   ; backtrack, but make the next choice
+                   (backtrack prog new-stack))]
+              [else
+               ; if we ran out of choices, then pop off the stack
+               (backtrack prog (rest stack))]))))
 
 ;; pick-and-fire-rule : [Rule Database SearchStack -> ConsistencyResult]
 ;;                      [ListOf Rule]
@@ -159,7 +182,8 @@
 
 ;; deduce-with-rule : Rule Database SearchStack -> ConsistencyResult
 ;; Attempts to use the given rule to make a new deduction
-;; If no deductions can be made, #f; if inconsistent, 'inconsistent
+;; If no deductions can be made, #f; if inconsistent, return inconsistent
+;; with the same stack
 (define (deduce-with-rule rule db stack)
   ;; is-good-subst? : Substitution -> Bool
   ;; in this context, a substitution is "good" if it lets us deduce a new fact
@@ -172,11 +196,12 @@
      (define new-fact (rule-frag->fact (ground subst (rule-conclusion rule))))
      (if (consistent? db new-fact)
          (db-state (db-cons new-fact db) stack)
-         'inconsistent)]))
+         (inconsistent stack))]))
 
 ;; choose-with-rule : Rule Database SearchStack -> ConsistencyResult
 ;; Attempts to use the given rule to make a new deduction
-;; If no deductions can be made, #f; if inconsistent, 'inconsistent
+;; If no deductions can be made, #f; if inconsistent, return inconsistent
+;; with the new stack that was tried
 (define (choose-with-rule rule db stack)
   ;; is-good-subst? : Substitution -> Bool
   ;; in this context, a substitution is "good" if the conclusion grounded
@@ -185,9 +210,17 @@
   (define (is-good-subst? subst)
     ; TODO: optimize by filtering out inconsistent choices
     (define grounded-conclusion (ground subst (rule-conclusion rule)))
+
+    ; 'tried = #t for our purposes
+    (define (conclusion=? a b)
+      (and (equal? (rule-frag-name a) (rule-frag-name b))
+           (equal? (rule-frag-terms a) (rule-frag-terms b))
+           (equal? (rule-frag-choices a) (rule-frag-choices b))
+           (equal? (not (rule-frag-is?? a)) (not (rule-frag-is?? b)))))
+    
     (andmap (lambda (state)
-              (not (equal? (search-state-conclusion state)
-                           grounded-conclusion)))
+              (not (conclusion=? (search-state-conclusion state)
+                                 grounded-conclusion)))
             stack))
 
   (match (inst-premises (rule-premises rule) (hash) db is-good-subst?)
@@ -199,7 +232,7 @@
      (define new-fact (rule-frag->fact/choose new-conc 0))
      (if (consistent? db new-fact)
          (db-state (db-cons new-fact db) (cons new-state stack))
-         'inconsistent)]))
+         (inconsistent (cons new-state stack)))]))
 
 ;; deduce : [ListOf Rule] Database SearchStack -> ConsistencyResult
 ;; Makes one deduction if possible, using the first deduction rule which fires.
@@ -361,6 +394,13 @@
              (rule-frag-terms frag)
              (list-ref (rule-frag-choices frag) idx)))
 
+;; rule-frag->constraint : ClosedRuleFragment -> Constraint
+;; Turns a closed rule fragment into a constraint (saying that none of the
+;; choices are allowed).
+(define (rule-frag->constraint frag)
+  (constraint (rule-frag-name frag)
+              (rule-frag-terms frag)
+              (rule-frag-choices frag)))
 
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given relation on the provided terms exists in

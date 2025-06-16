@@ -5,6 +5,8 @@
 (provide (except-out (all-defined-out)
                      (struct-out database)))
 
+(require "data.rkt")
+
 ;; A Database is a (database [SetOf Fact] [SetOf Constraint])
 (struct database [facts constraints] #:transparent)
 
@@ -52,3 +54,18 @@
 (define (db-andmap pred? db)
   ; see comment above
   (for/and ([fact (database-facts db)]) (pred? fact)))
+
+;; consistent? : Database Fact -> Boolean
+;; Determine if the given fact is consistent with the database of already
+;; known facts.
+(define (consistent? db f)
+  ;; fact-consistent? : Fact -> Boolean
+  ;; Determine if the known fact is consistent with the closed over fact f.
+  ;; Two facts are consistent if they do not map the same attribute to
+  ;; different values.
+  (define (fact-consistent? known)
+    (not (and (equal? (fact-rel f) (fact-rel known))
+              (equal? (fact-terms f) (fact-terms known))
+              (not (equal? (fact-value f) (fact-value known))))))
+
+  (db-andmap fact-consistent? db))

@@ -8,7 +8,8 @@
 (require syntax-spec-v3
          (for-syntax syntax/parse
                      (only-in syntax-spec-v3/private/ee-lib/main lookup)
-                     "compile.rkt"))
+                     "compile.rkt")
+         (prefix-in rt: "data.rkt"))
 
 ;; see README for the grammar we are incrementally working towards
 

@@ -57,7 +57,7 @@
 
 ;; consistent? : Database Fact -> Boolean
 ;; Determine if the given fact is consistent with the database of already
-;; known facts.
+;; known facts and constraints.
 (define (consistent? db f)
   ;; fact-consistent? : Fact -> Boolean
   ;; Determine if the known fact is consistent with the closed over fact f.
@@ -68,4 +68,14 @@
               (equal? (fact-terms f) (fact-terms known))
               (not (equal? (fact-value f) (fact-value known))))))
 
-  (db-andmap fact-consistent? db))
+  ;; constraint-valid? : Constraint -> Boolean
+  ;; Determine if the known fact is consistent given the constraint c.
+  (define (constraint-valid? c)
+    (not (and (equal? (fact-rel f) (constraint-rel c))
+              (equal? (fact-terms f) (constraint-terms c))
+              (set-member? (constraint-none-of c) (fact-value f)))))
+
+  (and (for/and ([fact (database-facts db)])
+                 (fact-consistent? fact))
+       (for/and ([c (database-constraints db)])
+          (constraint-valid? c))))

@@ -4,12 +4,8 @@ SYNTAX RELATED:
   - [x] This may depend on if we have syntax in our variables
         instead of just symbols. What is the right equality?
 - [x] Change over to using `id` for relation variables
-- [ ] `#demand` and `#forbid` with `gensym`
-  - Maybe we should slightly expand the syntax-spec
-  - Layer on top which expands to that other syntax-spec stuff
-  - This is where we implement the name hiding stuff
 - [ ] Concrete syntax
-  - [ ] Infix `is`?
+  - [x] Infix `is`?
   - [ ] Maybe make some singletons not need parens? idk
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
@@ -26,7 +22,7 @@ RUNTIME RELATED:
         (which may involve tweaking the current solver)
 - [x] **Builtin support**
   - [x] This also requires making changes to the syntax too
-- [ ] How much work to get this working with open rules?
+- [x] How much work to get this working with open rules?
 - [ ] Port over Dusa's test suite (once we support more things...)
 
 CODE IMPROVEMENTS:

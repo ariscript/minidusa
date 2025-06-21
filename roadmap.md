@@ -1,6 +1,4 @@
 In progress:
-- `rel-var` appearing in Racket expressions is not allowed, which is preventing
-  us from adding in import sugar
 - If we keep syntax objects around at runtime and return them in solutions, how
   are supposed to write any tests? Should this be exposed to end users? If not,
   how will _they_ disambiguate?
@@ -9,9 +7,8 @@ In progress:
 - Better motivating examples for macro hygeine
 
 Direct next steps:
-- Open rules, `is?`
-  - Then, the only Dusa features unsupported are running things backwards
 - Allow arbitrary expressions (maybe with syntactic boundary for parsing)
+  - Then, the only Dusa features unsupported are running things backwards
 - See `TODO.md` for more fixes and clean-ups
   - Maybe some stuff from there should be moved here...
 

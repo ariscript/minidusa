@@ -33,7 +33,7 @@
 ;; known to be true at the time of choice, the options to choose from
 ;; (a now-grounded conclusion), and indices of choices which have been made.
 
-(struct search-state [database conclusion tried])
+(struct search-state [database conclusion tried] #:transparent)
 
 ;; A SearchStack is a [ListOf SearchState]
 
@@ -43,7 +43,7 @@
 ;; (choose) Database Logic SearchStack -> Database SearchStack
 
 ;; A DatabaseState is a (db-state Database SearchStack)
-(struct db-state [db stack])
+(struct db-state [db stack] #:transparent)
 
 ;; A SolutionResult is [Maybe DatabaseState]
 
@@ -52,7 +52,7 @@
 ;; - #f
 ;; - DatabaseState
 ;; and represents a SolutionResult where an inconsistency may have been reached
-(struct inconsistent [stack])
+(struct inconsistent [stack] #:transparent)
 
 ;; A Substitution is a [HashOf Symbol Datum]
 ;; and represents a substitituon for variables in an OpenFact.
@@ -485,3 +485,21 @@
                                    (list (fact + '(1 2 3 4) (variable 'X)))))
                        '())))
    (list (solution (db-of (make-fact 'foo '() 10))))))
+
+(define prog
+  (program (list (rule (rule-frag 'ok '() '(#t) #f) '())
+                 (rule (rule-frag 'ok '() '(#f) #f) (list (fact 'a '() 1))))
+           (list (rule (rule-frag 'a '() '(1) #t) '()))))
+(define deduced (deduce (program-deduce-rules prog) (db-of) '()))
+(define deduced* (deduce (program-deduce-rules prog) (db-state-db deduced) '()))
+(define chosen (choose (program-choose-rules prog) (db-state-db deduced) '()))
+(define deduced** (deduce (program-deduce-rules prog) (db-state-db chosen)
+                          (db-state-stack chosen)))
+(define backtracked (backtrack prog (inconsistent-stack deduced**)))
+(define new-db (db-add-constraint
+                                (rule-frag->constraint
+                                 (rule-frag 'a '() '(1) 'tried))
+                                (db-of (fact 'ok '() #t))))
+#;(define add-constraint (deduce (program-deduce-rules prog)
+                               new-db
+                               (db-state-stack backtracked)))

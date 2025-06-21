@@ -80,7 +80,8 @@
        (set-add! imported-rel-vars (syntax->datum #'rel-id))]))
 
   (define body
-    (let ([compile-decl ((curry compile-decl) rel-arities imported-rel-vars)])
+    (let ([compile-decl ((curry compile-decl) rel-arities imported-rel-vars)]
+          [logic-stx (flatten-decls logic-stx)])
       (syntax-parse logic-stx
         [(d ...)
          ;; like define/syntax-parse, but shorter
@@ -98,6 +99,16 @@
   (syntax-parse imports-stx
     [[[rel-var rhs] ...]
      #`(let ([rel-var rhs] ...) #,body)]))
+
+;; flatten-decls : LogicSyntax -> LogicSyntax
+;; flattens all `decls` blocks into a single list of decls at the top level.
+(define (flatten-decls logic-stx)
+  (syntax-parse logic-stx
+    #:datum-literals (decls)
+    [() #'()]
+    [((decls inner ...) rest ...)
+     (flatten-decls #'(inner ... rest ...))]
+    [(d rest ...) #`(d #,@(flatten-decls #'(rest ...)))]))
 
 ;; DeclSyntax -> Bool
 ;; determines if the given declaration is a choice-based rule

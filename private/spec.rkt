@@ -364,4 +364,11 @@
      (convert-compile-time-error
       (logic
         ((foo) :- ((foo) is? 1))))))
+
+  (check-equal?
+   (logic
+     (decls ((a) is? {#t})))
+   (rt:program
+    '()
+    (list (rt:rule (rt:rule-frag 'a '() '(#t) #t) '()))))
   )

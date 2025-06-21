@@ -89,8 +89,35 @@
     (all (logic
            ((a) is? {1})
            ((b) is {1})
-           (forbid ok ((a) is 1)))))
-   (list (solution (database (set (fact 'ok '() #t)) (set)))))
+           ((ok) is {#t})
+           (((ok) is {#f}) :- ((a) is 1)))))
+   '())
+
+  (define-dsl-syntax demand logic-macro
+    (lambda (stx)
+      (syntax-parse stx
+        [(_ d f p ...+)
+         #'(decls ((d) is? {#f})
+                  (((d) is {#t}) :- p ...)
+                  (forbid f ((d) is #f)))])))
+
+  (check-equal?
+   (stream->list
+    (all (logic
+           ((species) is {'bear 'bird})
+           (((name) is {'yogi}) :- ((species) is 'bear))
+           (((name) is {'tweety}) :- ((species) is 'bird))
+           ; this is the expansion of demand
+           #;(decls ((d) is? {#f})
+                  (((d) is {#t}) :- ((name) is 'yogi))
+                  (decls ((ok) is {#t})
+                         (((ok) is {#f}) :- ((d) is #f))))
+           (demand d ok ((name) is 'yogi)))))
+   (list (solution (db-of
+                    (fact 'species '() 'bear)
+                    (fact 'name '() 'yogi)
+                    (fact 'ok '() #t)
+                    (fact 'd '() #t)))))
 
   (define-dsl-syntax mydecl logic-macro
     (lambda (stx)

@@ -72,8 +72,8 @@
   ;; Determine if the given fact has the same attribute as
   ;; rel and terms.
   (define (attr-like? f)
-    (not (and (equal? (fact-rel f) rel)
-              (equal? (fact-terms f) terms))))
+    (and (equal? (fact-rel f) rel)
+              (equal? (fact-terms f) terms)))
   (not (db-empty? (db-filter attr-like? db))))
 
 ;; db-filter : [Fact -> Boolean] Database -> Database

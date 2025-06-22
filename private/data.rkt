@@ -81,13 +81,9 @@
 
 (struct rule [conclusion premises] #:transparent)
 
-;; define-logic binds the identifier to a `Logic`
-;; `Logic` is an object that can be used to obtain solutions.
-
-;; Internally, we know that a Logic is a (logic [ListOf Rule] [ListOf Rule])
+;; A Program is a (logic [ListOf Rule] [ListOf Rule])
 ;; storing the rules which never require making a choice in the conclusion
 ;; and the rules which require making choices (> 1 option on RHS of `is`)
-;; TODO: add in information about imported Racket function(al relation)s
 
 (struct program [deduce-rules choose-rules] #:transparent)
 

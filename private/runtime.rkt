@@ -1,7 +1,5 @@
 #lang racket
 
-;; these are not provided as `struct-out` since we only
-;; have to construct from the compiler, nothing else
 (provide all
          has
          get)
@@ -27,6 +25,8 @@
 ;; we want a stack of choice points
 ;; choice points in the stack have to contain enough information
 ;; to ensure that we don't make the same choice multiple times
+
+;; runtime-internal data
 
 ;; A SearchState is a (search-state Database RuleFragment [SetOf Nat]).
 ;; It represents information associated with a choice point: namely, the facts
@@ -485,21 +485,3 @@
                                    (list (fact + '(1 2 3 4) (variable 'X)))))
                        '())))
    (list (solution (db-of (make-fact 'foo '() 10))))))
-
-(define prog
-  (program (list (rule (rule-frag 'ok '() '(#t) #f) '())
-                 (rule (rule-frag 'ok '() '(#f) #f) (list (fact 'a '() 1))))
-           (list (rule (rule-frag 'a '() '(1) #t) '()))))
-(define deduced (deduce (program-deduce-rules prog) (db-of) '()))
-(define deduced* (deduce (program-deduce-rules prog) (db-state-db deduced) '()))
-(define chosen (choose (program-choose-rules prog) (db-state-db deduced) '()))
-(define deduced** (deduce (program-deduce-rules prog) (db-state-db chosen)
-                          (db-state-stack chosen)))
-(define backtracked (backtrack prog (inconsistent-stack deduced**)))
-(define new-db (db-add-constraint
-                                (rule-frag->constraint
-                                 (rule-frag 'a '() '(1) 'tried))
-                                (db-of (fact 'ok '() #t))))
-#;(define add-constraint (deduce (program-deduce-rules prog)
-                               new-db
-                               (db-state-stack backtracked)))

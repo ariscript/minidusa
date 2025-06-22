@@ -101,7 +101,7 @@
      #`(let ([rel-var rhs] ...) #,body)]))
 
 ;; flatten-decls : LogicSyntax -> LogicSyntax
-;; flattens all `decls` blocks into a single list of decls at the top level.
+;; flattens all `decls` blocks into a single list of decls at the top level
 (define (flatten-decls logic-stx)
   (syntax-parse logic-stx
     #:datum-literals (decls)

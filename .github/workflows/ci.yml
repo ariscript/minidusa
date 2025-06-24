@@ -19,7 +19,7 @@ jobs:
           architecture: x64
           distribution: full
           variant: CS
-          version: ${{ matrix.racket-version }
+          version: ${{ matrix.racket-version }}
       - name: Installing minidusa and its dependencies
         run: raco pkg install --no-docs --auto --name minidusa
       - name: Compiling minidusa and building its docs

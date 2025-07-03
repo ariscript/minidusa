@@ -1,0 +1,83 @@
+\documentclass[dvipsnames,sigplan,screen,review,anonymous,acmthm,nonacm]{acmart}
+% \documentclass[dvipsnames,sigplan,screen,acmthm]{acmart}
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+\setcopyright{none}
+% \setcopyright{acmcopyright}
+% \copyrightyear{2018}
+% \acmYear{2018}
+% \acmDOI{10.1145/1122445.1122456}
+
+%% TODO: does this matter?
+
+\citestyle{acmauthoryear}
+% \citestyle{acmnumeric}
+
+\input{preamble}
+\input{defs}
+
+\begin{document}
+
+\title{miniDusa: something something}
+
+
+%% TODO: alphabetical by last name or by first
+%% name?? not sure which or it it matters
+
+\author{Ari Prakash}
+% \orcid{XXXX-XXXX-XXXX-XXXX}
+\affiliation{%
+  \institution{Northeastern University}
+  \city{Boston}
+  \state{MA}
+  \country{USA}
+}
+\email{prakash.ar@northeastern.edu}
+% TODO: maybe comment this out because 
+\authornote{Both authors contributed equally to this work}
+
+
+\author{Zachary Eisbach}
+% \orcid{0009-0005-3028-7211}
+\affiliation{%
+  \institution{Northeastern University}
+  \city{Boston}
+  \state{MA}
+  \country{USA}
+}
+\email{eisbach.z@northeastern.edu}
+\authornotemark[1]
+
+%% TODO: anyone else? probably just acknowledgments
+
+% \authorsaddresses{}
+
+%% TODO: should we have this??
+
+% \begin{abstract}
+%   \input{abstract}
+% \end{abstract}
+
+\maketitle
+
+Stub~\cite{martens2025dusa}
+foo bar baz foo bar baz.
+foo bar baz foo bar baz.
+foo bar baz foo bar baz.
+
+\clearpage
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}
+\endinput

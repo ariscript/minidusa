@@ -1,0 +1,286 @@
+\newcommand{\iftech}[1]{\ifthen{\equal{\docpart}{tech}}{#1}}
+\newcommand{\ifpaper}[1]{\ifthen{\equal{\docpart}{paper}}{#1}}
+\newcommand{\warn}[1]{\PackageWarning{swift}{#1}}
+\newcommand{\depr}{\textcolor{Red}{\textnormal{DEPRECATED}}\warn{DEPRECATED}}
+\NewDocumentCommand{\authnote}{smm}{\IfBooleanTF{#1}{\footnote}{\identity}{\textcolor{Red}{\textnormal{#2: #3}}}}
+\newcommand{\makeauthnote}[1]{%
+  \expandafter\NewDocumentCommand\csname #1\endcsname{sm}{%
+    \IfBooleanTF{##1}{\footnote}{\identity}{\textcolor{Red}{\textnormal{\MakeUppercase{#1}: ##2}}}%
+  }%
+}%
+\makeauthnote{zje}
+\let\textlabel\label
+\newcommand{\identity}[1]{#1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%% TEXT FORMATTING %%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\Crefname{section}{\S}{\S\S}
+\Crefname{figure}{Fig.}{Figs.}
+
+\newcommand{\kw}[1]{\mathcolor{MidnightBlue}{\mathsf{#1}}}
+\newcommand{\Kw}[1]{\mathsf{#1}}
+\makeatletter
+\newcommand{\labitem}[1]{\item[#1]\def\@currentlabelname{#1}}
+\makeatother
+\newcommand{\placehold}[1][0.13]{\includegraphics[width=\textwidth,height=#1\textheight]{example-image}}
+
+% name [label] default [style]
+\NewDocumentCommand{\makestx}{smomO{\identity}O{#5}}{%
+  % starred version lets you change the base symbol, useful for variables and numbers
+  \IfBooleanTF{#1}{%
+    \expandafter\NewDocumentCommand\csname #2\endcsname{O{#4} e{_^}}{%
+      \IfValueTF{#3}{\newlink{#3}}{\identity}{%
+        #5{##1}\IfValueT{##2}{_{#6{\mathsmaller{##2}}}}\IfValueT{##3}{^{#6{\mathsmaller{##3}}}}%
+      }%
+    }%
+  }
+  % non-starred version has a fixed base symbol, useful for expr / etc
+  {%
+    \expandafter\NewDocumentCommand\csname #2\endcsname{e{_^}}{%
+      \IfValueTF{#3}{\newlink{#3}}{\identity}{%
+        #5{#4}\IfValueT{##1}{_{#6{\mathsmaller{##1}}}}\IfValueT{##2}{^{#6{\mathsmaller{##2}}}}%
+      }%
+    }%
+  }%
+}%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%% LANG %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% stub
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%% TYPES %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% stub
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%% SYMBOLS %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\BB}{\mathbb{B}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\UU}{\mathbbm{1}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\poison}{\text{\Biohazard}}
+\newcommand{\sep}{\star}
+\newcommand{\bigsep}{\scalerel*{\sep}{\sum}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% OPERATORS %%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\RenewDocumentCommand{\vec}{m E{^}{{}}}{\overline{#1}^{\mathsmaller{#2}}}
+\newcommand{\sem}[1]{{\left\llbracket #1 \right\rrbracket}}
+\newcommand{\from}{\leftarrow}
+\newcommand{\To}{\Rightarrow}
+\newcommand{\nto}{\nrightarrow}
+\newcommand{\defeq}{\triangleq}
+\newcommand{\defapx}{\stackrel{\triangle}{\approx}}
+\newcommand{\dom}{\textnormal{dom}}
+\newcommand{\symdiff}{\mathrel{\triangle}}
+% https://tex.stackexchange.com/a/22255
+\newcommand\restr[2]{{% we make the whole thing an ordinary symbol
+  \left.\kern-\nulldelimiterspace % automatically resize the bar with \right
+  #1 % the function
+  \vphantom{\big|} % pretend it's a little taller at normal size
+  \right|_{#2} % this is the delimiter
+  }}
+\newcommand{\pto}{\stackrel{\scriptscriptstyle \kw{fin}}{\rightharpoonup}}
+\renewcommand{\implies}{\Rightarrow}
+\renewcommand{\iff}{\Leftrightarrow}
+\let\oldforall\forall
+\renewcommand{\forall}{\oldforall\,}
+\let\oldexists\exists
+\renewcommand{\exists}{\oldexists\,}
+
+% https://damaru2.github.io/general/notations_with_links/
+\newcommand\newlink[2]{{\protect\hyperlink{#1}{\normalcolor #2}}}
+\makeatletter
+\def\Hy@raisedlink@left#1{%
+    \ifvmode
+        #1%
+    \else
+        \Hy@SaveSpaceFactor
+        \llap{\smash{% \llapadded
+        \begingroup
+            \let\HyperRaiseLinkLength\@tempdima
+            \setlength\HyperRaiseLinkLength\HyperRaiseLinkDefault
+            \HyperRaiseLinkHook
+        \expandafter\endgroup
+        \expandafter\raise\the\HyperRaiseLinkLength\hbox{%
+            \Hy@RestoreSpaceFactor
+            #1%
+            \Hy@SaveSpaceFactor%
+        }} } %to close \llap
+        \Hy@RestoreSpaceFactor
+        \penalty\@M\hskip\z@
+    \fi
+}
+\newcommand\newtarget[2]{\Hy@raisedlink{\hypertarget{#1}{}}#2}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%% PROOFS %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\theoremstyle{acmplain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{convention}[theorem]{Convention}
+
+% this is mostly a hack because I couldn't figure out a better way
+\newcommand{\convref}[1]{%
+  \hyperref[#1]{\textsc{Convention}~\ref{#1}}%
+}
+\newcommand{\figref}[1]{%
+  \hyperref[#1]{Figure~\ref{#1}}%
+}
+
+\newcounter{hyp}
+\newcounter{gol}
+\newcounter{def}
+\counterwithin*{hyp}{theorem}
+\counterwithin*{gol}{theorem}
+\counterwithin*{def}{theorem}
+\newcommand{\labelhyp}[1]{hyp:\thetheorem:#1}
+\newcommand{\labelgol}[1]{gol:\thetheorem:#1}
+\newcommand{\labeldef}[1]{def:\thetheorem:#1}
+
+\newcommand{\hyptarget}[2]{%
+  \begingroup\refstepcounter{hyp}\textlabel{\expandafter\labelhyp{#1}}%
+    {\newtarget{\expandafter\labelhyp{#1}}{{#2}^{(\hyplink{#1})}}}\endgroup
+}
+\newcommand{\hyplink}[1]{\newlink{\expandafter\labelhyp{#1}}{\text{H\ref{\expandafter\labelhyp{#1}}}}}
+
+\NewDocumentCommand{\goltarget}{mm}{%
+  \begingroup\refstepcounter{gol}\textlabel{\expandafter\labelgol{#1}}%
+    {\newtarget{\expandafter\labelgol{#1}}{{#2}^{(\gollink{#1})}}}\endgroup
+}
+\newcommand{\gollink}[1]{\newlink{\expandafter\labelgol{#1}}{\text{G\ref{\expandafter\labelgol{#1}}}}}
+
+\NewDocumentCommand{\deftarget}{mm}{%
+  \begingroup\refstepcounter{def}\textlabel{\expandafter\labeldef{#1}}%
+    {\newtarget{\expandafter\labeldef{#1}}{{#2}^{(\deflink{#1})}}}\endgroup
+}
+\newcommand{\deflink}[1]{\newlink{\expandafter\labeldef{#1}}{\text{G\ref{\expandafter\labeldef{#1}}}}}
+
+\newcommand{\assume}{\hyptarget}
+\newcommand{\have}{\hyplink}
+\newcommand{\by}{\hyplink}
+\newcommand{\wts}{\goltarget}
+\newcommand{\suff}{\goltarget}
+\newcommand{\shows}{\gollink}
+\newcommand{\exact}{\gollink}
+\newcommand{\pose}{\deftarget}
+
+\newenvironment{customfont}[2]{%
+    \begingroup%
+    \fontsize{#1}{#2}\selectfont%
+}{%
+    \endgroup%
+}
+
+\newcommand{\mprlabpos}{lab}
+% \newcommand{\mprlabpos}{right}
+
+\let\oldinferrule\inferrule
+% adapted from
+% https://tex.stackexchange.com/a/340843
+\makeatletter
+\DeclareDocumentCommand \inferrule { s O {} O{\mprlabpos} m m o}{%
+  \IfBooleanTF{#1}%
+  {%
+    \oldinferrule*[#2]{#4}{#5}%
+  }{%
+    \oldinferrule*[%
+    % HACK WARNING: using #3 and not {#3} so I can add side conditions
+    #3=(\IfValueTF{#6}{%
+      \begingroup%
+      \def\@currentlabelname{\textsc{#2}}%
+      \phantomsection%
+      \textlabel{#6}{\newtarget{#6}{#2}}%
+      \endgroup%
+    }%
+    {#2}%
+    )%
+    ]{#4}{#5}%
+  }%
+}
+\makeatother
+
+% surely there is a better way to do this
+% this wrapper macro is at least better than the previous hack
+\DeclareDocumentCommand \inferruleside { s O {} m m m o}{%
+  \IfBooleanTF{#1}{%
+    \inferrule*[#2][right={(\({#3}\))}, \mprlabpos]{#4}{#5}[#6]%
+  }{%
+    \inferrule[#2][right={(\({#3}\))}, \mprlabpos]{#4}{#5}[#6]%
+  }%
+}
+
+\newcommand{\dash}{\text{-}}
+\ebproofnewstyle{back}{proof style=downwards}
+\ebproofnewstyle{small}{
+  separation = 1em, rule margin = .5ex,
+  template = {\small$\inserttext$},
+  right label template = {\small\inserttext}
+}
+\ebproofnewstyle{smaller}{
+  separation = 1em, rule margin = .5ex,
+  template = {\footnotesize$\inserttext$},
+  right label template = {\footnotesize\inserttext}
+}
+
+\newenvironment{mathline}{\\[\abovedisplayskip] $}{$ \\[\belowdisplayskip]}
+
+\newcommand{\namerefsc}[1]{\textsc{\nameref{#1}}}
+
+\newcommand{\pinfer}{%
+  % \mprset{myfraction=\entailfrac} % breaks on large cases
+  \oldinferrule
+}
+
+\newcommand{\processnameref}[1]{\nameref{#1}, }
+\NewDocumentCommand{\namerefs}{>{\SplitList{,}}om}{%
+  \IfValueT{#1}{\ProcessList{#1}{\processnameref} and }\nameref{#2}%
+}
+
+%% modified from iris: https://gitlab.mpi-sws.org/iris/iris/-/blob/master/tex/pftools.sty?ref_type=heads
+\newcommand{\entailfrac}[2]{%
+  \hbox{%
+    \ooalign{%
+      $\mid\xjoinrel[9]\genfrac{}{}{1.6pt}1{#1}{#2}$\cr%
+      $\mid\xjoinrel[9]\color{white}\genfrac{}{}{0.8pt}1{\phantom{#1}}{\phantom{#2}}$%
+    }%
+  }%
+}
+
+% https://tex.stackexchange.com/a/114367
+\makeatletter
+\providecommand*{\Dashv}{%
+  \mathrel{%
+    \mathpalette\@Dashv\vDash
+  }%
+}
+\newcommand*{\@Dashv}[2]{%
+  \reflectbox{$\m@th#1#2$}%
+}
+\makeatother
+
+% https://tex.stackexchange.com/a/34716
+\makeatletter
+\providecommand*{\nest}{%
+  \mathrel{%
+    \mathpalette\@nest\Rsh
+  }%
+}
+\newcommand*{\@nest}[2]{%
+  \raisebox{\depth}{\scalebox{1}[-1]{$\m@th#1#2$}}%
+}
+\makeatother

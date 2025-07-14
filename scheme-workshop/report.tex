@@ -113,10 +113,10 @@ possible assignments of colors to nodes. We encode the additional constraint
 that adjacent nodes have different color as follows to complete the program:
 
 \begin{verbatim}
-  ((ok-coloring) is {#t})
-  (((ok-coloring) is {#f}) :- (edge X Y)
-                              ((color X) is C)
-                              ((color Y) is C)))
+  ((ok) is {#t})
+  (((ok) is {#f}) :- (edge X Y)
+                     ((color X) is C)
+                     ((color Y) is C)))
 \end{verbatim}
 The (functional) fact \texttt{((ok) is {\#t})} will always hold.
 If adjacent nodes have the same color, then \texttt{((ok) is {\#f})}

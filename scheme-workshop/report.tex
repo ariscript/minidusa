@@ -20,15 +20,15 @@
 
 %% TODO: does this matter?
 
-\citestyle{acmauthoryear}
-% \citestyle{acmnumeric}
+% \citestyle{acmauthoryear}
+\citestyle{acmnumeric}
 
 \input{preamble}
 \input{defs}
 
 \begin{document}
 
-\title{miniDusa: something something}
+\title{miniDusa: An Extensible Finite-Choice Logic Programming Language (Lightning Talk)}
 
 
 %% TODO: alphabetical by last name or by first
@@ -43,7 +43,6 @@
   \country{USA}
 }
 \email{prakash.ar@northeastern.edu}
-% TODO: maybe comment this out because 
 \authornote{Both authors contributed equally to this work}
 
 
@@ -58,22 +57,35 @@
 \email{eisbach.z@northeastern.edu}
 \authornotemark[1]
 
-%% TODO: anyone else? probably just acknowledgments
-
 % \authorsaddresses{}
-
-%% TODO: should we have this??
-
-% \begin{abstract}
-%   \input{abstract}
-% \end{abstract}
 
 \maketitle
 
-Stub~\cite{martens2025dusa}
-foo bar baz foo bar baz.
-foo bar baz foo bar baz.
-foo bar baz foo bar baz.
+\section{Introduction}
+
+\Dusa~\cite{martens2025dusa} % maybe cite dusa.rocks impl too?
+is a recently designed logic programming language featuring
+\emph{mutually exclusive choice} as a primitive to enable
+computation of solutions that satisfy constraints.
+
+% TODO: sentence to bridge this gap?
+
+We introduce \miniDusa, a \Dusa-inspired
+% TODO: (nit) italics are awkward here. maybe omit DSL? 
+\emph{hosted domain-specific language} (DSL) implemented using Racket and
+the \syntaxspec{} metalanguage~\cite{ballantyne2024pearl}. % cite docs?
+This architecture lets our implementation inherit tooling and features
+from the host, like macro-extensibility, essentially ``for free''.
+
+
+\section{miniDusa by Example}
+
+In Dusa and miniDusa alike,
+
+% TODO: maybe two sections?
+\section{Extensibility and Interoperability}
+
+% \section{Conclusion}
 
 \clearpage
 \bibliographystyle{ACM-Reference-Format}

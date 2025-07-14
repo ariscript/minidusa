@@ -1,6 +1,4 @@
-\newcommand{\iftech}[1]{\ifthen{\equal{\docpart}{tech}}{#1}}
-\newcommand{\ifpaper}[1]{\ifthen{\equal{\docpart}{paper}}{#1}}
-\newcommand{\warn}[1]{\PackageWarning{swift}{#1}}
+\newcommand{\warn}[1]{\PackageWarning{dusa}{#1}}
 \newcommand{\depr}{\textcolor{Red}{\textnormal{DEPRECATED}}\warn{DEPRECATED}}
 \NewDocumentCommand{\authnote}{smm}{\IfBooleanTF{#1}{\footnote}{\identity}{\textcolor{Red}{\textnormal{#2: #3}}}}
 \newcommand{\makeauthnote}[1]{%
@@ -21,6 +19,7 @@
 
 \newcommand{\kw}[1]{\mathcolor{MidnightBlue}{\mathsf{#1}}}
 \newcommand{\Kw}[1]{\mathsf{#1}}
+
 \makeatletter
 \newcommand{\labitem}[1]{\item[#1]\def\@currentlabelname{#1}}
 \makeatother

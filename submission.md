@@ -62,3 +62,15 @@ Our current implementation already has a _bit_ in each of these regards, but
 there is room to make things a lot more fleshed out (especially point 3).
 Remember, things should be macros _for a reason_---using macros in it of itself
 is not a meaningful contribution.
+
+## Meeting Notes 7.7.25
+
+Macros, small core and elaborating things down is something people care about.
+Our work should aim to be useful to people even who won't ever use these tools.
+- Common interests include language-oriented programming, macros, DSLs, or even
+  design of language extension systems
+
+We should emphasize the things we inherit "for free" from Racket, and note that
+this is part of syntax-spec and not unique to our implementation
+- Claim: getting these things for free is useful (and getting these
+  abstractions for free is useful for general DSLs!)

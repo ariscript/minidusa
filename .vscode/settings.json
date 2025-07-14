@@ -1,5 +1,15 @@
 {
   "markdown.marp.themes": [
     "https://raw.githubusercontent.com/rainbowflesh/Rose-Pine-For-Marp/refs/heads/master/css/rose-pine.css"
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk (xelatex)",
+      "tools": ["xelatexmk"]
+    },
+    {
+      "name": "latexmk",
+      "tools": ["latexmk"]
+    }
   ]
 }

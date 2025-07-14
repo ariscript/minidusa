@@ -127,8 +127,45 @@ We implement a relatively naïve solver based on the ``fact-set semantics''
 described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
 each of which may be queried by users.
 
-% TODO: maybe split two sections?
-\section{Extensibility and Interoperability}
+\section{Extensibility}
+
+The previous example is representative of common patterns that arise in logic
+programming contexts, and we would prefer to see abstractions over them. Dusa
+provides \texttt{\#forbid} as syntactic sugar over the \texttt{ok} fact and rule
+shown earlier. miniDusa allows for this through user-defineable macros that
+expand into miniDusa core syntax. This also allows users to express constructs
+in their problem domain in a more natural way. Consider the
+\texttt{(edge 'a 'b)} facts from earlier, we can express them in more familiar
+adjacency-list notation.
+
+Macros are allowed to expand into a collection of facts and rules. The
+\texttt{syntax-spec} metalangauge gives us the ability to define macros
+expanding to the core syntax, and to run static validation of the fully-expanded
+code at compile time. The previous example could be rewritten using macros as:
+\begin{verbatim}
+(define-dsl-syntax graph ...)
+(define-dsl-syntax forbid ...)
+(logic
+  (graph edge
+    ('a ['b 'c])
+    ('b ['c 'd])
+    ('d ['c]))
+  ((node X) :- (edge X _))
+  (((color X) is {'r 'g 'b}) :- (node X))
+  (forbid (edge X Y)
+          ((color X) is C)
+          ((color Y) is C)))
+\end{verbatim}
+
+\section{Interoperability}
+
+Using \texttt{syntax-spec}, we not only inherit Racket's macro system, we can
+also have richer interoperability with Racket itself. miniDusa allows the user
+to \emph{import} arbitrary Racket functions to be used as functional relations
+within miniDusa. Since running arbitrary functions backwards is impossible, we
+only allow this when all arguments are known, and we want to either bind or
+verify the return value.
+
 % KEEP IN MIND: this is the part that should be interesting for everyone!
 % even if they don't care about logic programs. phrase with that in mind
 

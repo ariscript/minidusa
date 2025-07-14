@@ -9,6 +9,7 @@ SYNTAX RELATED:
   - [ ] Maybe make some singletons not need parens? idk
 - [ ] Improve `<logic-term>` to support more
   - [ ] Ex: lists
+- [ ] Actually support `_`s
 - [ ] Nested symbols -> expand with extra premises
 - [ ] Be able to import things in a macro itself?
   - Would probably require changing `decls`

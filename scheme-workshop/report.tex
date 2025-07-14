@@ -63,14 +63,14 @@
 
 \section{Introduction}
 
-\Dusa~\cite{martens2025dusa} % maybe cite dusa.rocks impl too?
+\Dusa{}~\cite{martens2025dusa} % maybe cite dusa.rocks impl too?
 is a recently designed logic programming language featuring
 \emph{mutually exclusive choice} as a primitive to enable
 computation of solutions that satisfy constraints.
 
 % TODO: sentence to bridge this gap?
 
-We introduce \miniDusa, a \Dusa-inspired
+We introduce \miniDusa{}, a \Dusa{}-inspired
 % TODO: (nit) italics are awkward here. maybe omit DSL? 
 \emph{hosted domain-specific language} (DSL) implemented using Racket and
 the \syntaxspec{} metalanguage~\cite{ballantyne2024pearl}. % cite docs?
@@ -80,7 +80,56 @@ from the host, like macro-extensibility, essentially ``for free''.
 
 \section{miniDusa by Example}
 
-In Dusa and miniDusa alike,
+A finite-choice logic program describes \emph{solutions}
+(i.e. sets of consistent facts), which are obtained using a \emph{solver}.
+To illuminate the semantics of \miniDusa{}, we walk through
+a program whose solutions are the 3-colorings of some graph:
+
+\begin{verbatim}
+(logic
+  (edge 'a 'b) (edge 'a 'c)  ; ... more ...
+  ((edge X Y) :- (edge Y X))
+  ((node X) :- (edge X _))
+\end{verbatim}
+A finite-choice logic program consists of \emph{facts} and \emph{rules},
+like Datalog programs. 
+The fact \texttt{(edge 'a 'b)} indicates that the \texttt{edge} predicate
+holds of nodes \texttt{'a} and \texttt{'b}.
+The premise of the rule \texttt{((edge X Y) :- (edge Y X))} will be
+instantiated with this fact, concluding \texttt{(edge 'b 'a)}.
+These facts and rules thus encode an undirected graph.
+
+\begin{verbatim}
+  (((color X) is {'r 'g 'b}) :- (node X))
+\end{verbatim}
+The conclusion of this rule is a \emph{functional proposition}
+(indicated with \texttt{is}), as opposed to the \emph{relational} propositions above.
+A functional proposition must have exactly one associated value;
+here, the associated value for each \texttt{color X} will
+be a \emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
+
+Without any added constraints, the solutions will simply enumerate all
+possible assignments of colors to nodes. We encode the additional constraint
+that adjacent nodes have different color as follows to complete the program:
+
+\begin{verbatim}
+  ((ok) is {#t})
+  (((ok) is {#f}) :- (edge X Y)
+                     ((color X) is C)
+                     ((color Y) is C)))
+\end{verbatim}
+The (functional) fact \texttt{((ok) is {\#t})} will always hold.
+If adjacent nodes have the same color, then \texttt{((ok) is {\#f})}
+will be concluded; this would violate the uniqueness requirement noted
+above, causing any such solutions to be rejected.
+
+We implement a relatively naïve solver based on the ``fact-set semantics''
+described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
+each of which may be queried by users.
+
+
+% say some stuff about our solver after describing the program
+% the program describes solutions and we solve to find those solutions
 
 % TODO: maybe two sections?
 \section{Extensibility and Interoperability}

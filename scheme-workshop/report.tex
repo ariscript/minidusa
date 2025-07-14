@@ -113,10 +113,10 @@ possible assignments of colors to nodes. We encode the additional constraint
 that adjacent nodes have different color as follows to complete the program:
 
 \begin{verbatim}
-  ((ok) is {#t})
-  (((ok) is {#f}) :- (edge X Y)
-                     ((color X) is C)
-                     ((color Y) is C)))
+  ((ok-coloring) is {#t})
+  (((ok-coloring) is {#f}) :- (edge X Y)
+                              ((color X) is C)
+                              ((color Y) is C)))
 \end{verbatim}
 The (functional) fact \texttt{((ok) is {\#t})} will always hold.
 If adjacent nodes have the same color, then \texttt{((ok) is {\#f})}
@@ -127,14 +127,43 @@ We implement a relatively naïve solver based on the ``fact-set semantics''
 described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
 each of which may be queried by users.
 
-
-% say some stuff about our solver after describing the program
-% the program describes solutions and we solve to find those solutions
-
-% TODO: maybe two sections?
+% TODO: maybe split two sections?
 \section{Extensibility and Interoperability}
+% KEEP IN MIND: this is the part that should be interesting for everyone!
+% even if they don't care about logic programs. phrase with that in mind
+
+% probably say a little bit about syntax-spec
+% insert: the diagram
+% do it in this order because it justifies macros?
+
+% TODO: do we want to switch the order of these two subsections?
+
+% the previous example is indicative of many miniDusa programs
+% we want to abstract over common behavior, like the ok stuff
+% dusa provides this as #forbid
+% we conveniently implement it as a macro
+% this is an instance of syntax-spec + DSL making impl easier :)
+
+% users may also want a reusable graph definition, and ideally
+% one that is less verbose. we again can do this with a macro!
+% this is more powerful than before: we expect _users_ to write
+% such macros, not just us as language implementers
+
+% insert: the fully rewritten version.
+% probably not any macro definitions, maybe just with ...
+
+% reiterate that due to how syntax-spec is set-up, we get
+% nice expansion into core miniDusa to do some checks before
+% going any farther. i think that pattern is hard without syntax-spec
+% META: see this is why i was unsure about the order of these subsections
+
+% syntax spec not only lets us get macros, but also host language interop
+% insert: the code with the contrived example
+% then, talk about how we can use arbitrary racket functions,
+% which is also nice for users: we inherit expressivity and can use libraries/etc
 
 % \section{Conclusion}
+% TODO: depending on space, include this. not sure what to say to wrap up
 
 \clearpage
 \bibliographystyle{ACM-Reference-Format}

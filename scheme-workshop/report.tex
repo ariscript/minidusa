@@ -158,8 +158,10 @@ This is an instance of the project architecture simplifying the implementation e
 
 The \texttt{define-dsl-syntax} form used above is provided by \syntaxspec{},
 allowing \miniDusa{} macros to be carefully expanded into a slim core syntax.
-This enables a static validation pass before further generation of Racket code,
-as shown in the figure below:
+This enables a static validation pass before further generation of Racket code.
+% TODO: do we want a caption on the figure or just a sentence here? maybe space-dependent
+% as shown in the figure below:
+
 % TODO: not sure why this isn't properly centering...
 \begin{figure}[h]
   \begin{center}
@@ -184,17 +186,17 @@ as shown in the figure below:
       \draw (c) -- (d) node[label, below] {Solve};
     \end{tikzpicture}
   \end{center}
-  % \caption{The \miniDusa{} pipeline}
+  \caption{The \miniDusa{} pipeline}
 \end{figure}
 
-\section{Interoperability}
+\section{Host-Language Interoperability}
 
 % syntax spec not only lets us get macros, but also host language interop
 % insert: the code with the contrived example
 % then, talk about how we can use arbitrary racket functions,
 % which is also nice for users: we inherit expressivity and can use libraries/etc
 
-Using \texttt{syntax-spec}, we not only inherit Racket's macro system, we can
+Using \texttt{syntax-spec}, we not only inherit Racket's hygenic macro system, we can
 also have richer interoperability with Racket itself. miniDusa allows the user
 to \emph{import} arbitrary Racket functions to be used as functional relations
 within miniDusa. Since running arbitrary functions backwards is impossible, we

@@ -158,9 +158,9 @@ This is an instance of the project architecture simplifying the implementation e
 
 The \texttt{define-dsl-syntax} form used above is provided by \syntaxspec{},
 allowing \miniDusa{} macros to be carefully expanded into a slim core syntax.
-This enables a static validation pass before further generation of Racket code.
+This enables a static validation pass before further generation of Racket code
 % TODO: do we want a caption on the figure or just a sentence here? maybe space-dependent
-% as shown in the figure below:
+as shown in the figure below:
 
 % TODO: not sure why this isn't properly centering...
 \begin{figure}[h]
@@ -186,7 +186,7 @@ This enables a static validation pass before further generation of Racket code.
       \draw (c) -- (d) node[label, below] {Solve};
     \end{tikzpicture}
   \end{center}
-  \caption{The \miniDusa{} pipeline}
+  % \caption{The \miniDusa{} pipeline}
 \end{figure}
 
 \section{Host-Language Interoperability}
@@ -196,12 +196,26 @@ This enables a static validation pass before further generation of Racket code.
 % then, talk about how we can use arbitrary racket functions,
 % which is also nice for users: we inherit expressivity and can use libraries/etc
 
-Using \texttt{syntax-spec}, we not only inherit Racket's hygenic macro system, we can
-also have richer interoperability with Racket itself. miniDusa allows the user
-to \emph{import} arbitrary Racket functions to be used as functional relations
-within miniDusa. Since running arbitrary functions backwards is impossible, we
-only allow this when all arguments are known, and we want to either bind or
-verify the return value.
+Using \syntaxspec{}, we not only inherit Racket's hygienic macro system---we can
+also have richer interoperability with Racket itself. \miniDusa{} allows users
+to \emph{import} pure Racket functions as functional relations, where the
+associated value is obtained by calling the function. Ordinary Racket code can
+be used to perform otherwise-frustrating computations, perhaps leveraging
+existing libraries.
+
+\begin{verbatim}
+(define (same-year? y1 y2) ...)
+(logic #:import (same-year?)  ; ... as above ...
+  ((id-dob 'a) is {"07-26-2004"}) ; more ...
+  ((edge X Y) :- ((id-dob X) is A)
+                 ((id-dob Y) is B)
+                 ((same-year? A B) is #t)))
+\end{verbatim}
+
+Here, date parsing is handled by Racket to add edges between nodes
+with the same birth year. While \Dusa{} has a limited number of
+hard-coded built-in functional relations, \miniDusa{} leverages
+its status as a hosted DSL to increase expressivity.
 
 % \section{Conclusion}
 % TODO: depending on space, include this. not sure what to say to wrap up

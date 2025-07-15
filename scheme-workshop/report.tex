@@ -93,15 +93,15 @@ a program whose solutions are the 3-colorings of some graph:
 \end{verbatim}
 A finite-choice logic program consists of \emph{facts} and \emph{rules}.
 % like Datalog programs. 
-The fact \texttt{(edge 'a 'b)} indicates that the \texttt{edge} predicate
-holds of nodes \texttt{'a} and \texttt{'b}.
+The fact \texttt{(edge 'a 'b)} represents an edge from \texttt{'a} to \texttt{'b}.
 The premise of the rule \texttt{((edge X Y) :- (edge Y X))} will be
-instantiated with this fact, concluding \texttt{(edge 'b 'a)}.
+instantiated with this fact to conclude \texttt{(edge 'b 'a)}.
 These facts and rules thus encode an undirected graph.
 
 \begin{verbatim}
   (((color X) is {'r 'g 'b}) :- (node X))
 \end{verbatim}
+% TODO: (nit) should this be indented?
 The conclusion of this rule is a \emph{functional proposition}
 (indicated with \texttt{is}), as opposed to the \emph{relational} propositions above.
 Each functional proposition has a unique associated value---for instance,
@@ -109,19 +109,22 @@ the value associated to \texttt{color 'a} will be a
 \emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
 
 Without any added constraints, the solutions will simply enumerate all
-possible assignments of colors to nodes. We encode the additional constraint
-that adjacent nodes have different color as follows to complete the program:
+possible assignments of colors to nodes. We forbid solutions from
+assigning the same color to adjacent nodes as follows to complete the \miniDusa{} program:
 
 \begin{verbatim}
-  ((ok) is {#t})
-  (((ok) is {#f}) :- (edge X Y)
-                     ((color X) is C)
-                     ((color Y) is C)))
+  (forbid (edge X Y)
+          ((color X) is C)
+          ((color Y) is C))
 \end{verbatim}
-The (functional) fact \texttt{((ok) is {\#t})} will always hold.
-If adjacent nodes have the same color, then \texttt{((ok) is {\#f})}
-will be concluded; this would violate the uniqueness requirement noted
-above, causing any such solutions to be rejected.
+  % ((ok) is {#t})
+  % (((ok) is {#f}) :- (edge X Y)
+  %                    ((color X) is C)
+  %                    ((color Y) is C)))
+% The (functional) fact \texttt{((ok) is {\#t})} will always hold.
+% If adjacent nodes have the same color, then \texttt{((ok) is {\#f})}
+% will be concluded; this would violate the uniqueness requirement noted
+% above, causing any such solutions to be rejected. 
 
 We implement a relatively naïve solver based on the ``fact-set semantics''
 described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
@@ -129,8 +132,11 @@ each of which may be queried by users.
 
 \section{Extensibility via Macros}
 
-The previous example is representative of common patterns that arise in logic
-programming contexts, and we would prefer to see abstractions over them. Dusa
+We may write \emph{macros} abstracting over the common patterns seen in the
+previous example.
+% The previous example is representative of common patterns that arise in logic
+% programming contexts, and we would prefer to see abstractions over them. 
+Dusa
 provides \texttt{\#forbid} as syntactic sugar over the \texttt{ok} fact and rule
 shown earlier. miniDusa allows for this through user-defineable macros that
 expand into miniDusa core syntax. This also allows users to express constructs
@@ -139,15 +145,21 @@ in their problem domain in a more natural way. Consider the
 adjacency-list notation.
 The previous example could be rewritten using macros as:
 
+Such macros can ease the language implementation process as well;
+
+The \texttt{ok} pattern from the example is 
+
+conveniently implemented as a
+macro and provided by \miniDusa{} as 
+
+In fact, forbid and other constraints are conveniently implemented as macros
+
 \begin{verbatim}
-(define-dsl-syntax graph ...)
+(define-dsl-syntax undirected-graph ...)
 (define-dsl-syntax forbid ...)
 (logic
-  (graph edge
-    ('a ['b 'c])
-    ('b ['c 'd])
-    ('d ['c]))
-  ((node X) :- (edge X _))
+  (undirected-graph edge node
+    ('a ['b 'c])  #| ... more ... |# )
   (((color X) is {'r 'g 'b}) :- (node X))
   (forbid (edge X Y)
           ((color X) is C)

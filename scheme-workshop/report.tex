@@ -104,9 +104,9 @@ These facts and rules thus encode an undirected graph.
 \end{verbatim}
 The conclusion of this rule is a \emph{functional proposition}
 (indicated with \texttt{is}), as opposed to the \emph{relational} propositions above.
-Each functional propositions has a unique associated value;
-the value associated to (for instance) \texttt{color 'a} must
-be a \emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
+Each functional proposition has a unique associated value---for instance,
+the value associated to \texttt{color 'a} will be a
+\emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
 
 Without any added constraints, the solutions will simply enumerate all
 possible assignments of colors to nodes. We encode the additional constraint
@@ -127,7 +127,7 @@ We implement a relatively naïve solver based on the ``fact-set semantics''
 described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
 each of which may be queried by users.
 
-\section{Extensibility}
+\section{Extensibility via Macros}
 
 The previous example is representative of common patterns that arise in logic
 programming contexts, and we would prefer to see abstractions over them. Dusa
@@ -137,11 +137,8 @@ expand into miniDusa core syntax. This also allows users to express constructs
 in their problem domain in a more natural way. Consider the
 \texttt{(edge 'a 'b)} facts from earlier, we can express them in more familiar
 adjacency-list notation.
+The previous example could be rewritten using macros as:
 
-Macros are allowed to expand into a collection of facts and rules. The
-\texttt{syntax-spec} metalangauge gives us the ability to define macros
-expanding to the core syntax, and to run static validation of the fully-expanded
-code at compile time. The previous example could be rewritten using macros as:
 \begin{verbatim}
 (define-dsl-syntax graph ...)
 (define-dsl-syntax forbid ...)
@@ -156,6 +153,38 @@ code at compile time. The previous example could be rewritten using macros as:
           ((color X) is C)
           ((color Y) is C)))
 \end{verbatim}
+
+Macros are allowed to expand into a collection of facts and rules. The
+\texttt{syntax-spec} metalangauge gives us the ability to define macros
+expanding to the core syntax, and to run static validation of the fully-expanded
+code at compile time. 
+
+% something like the example above is made possible through
+% syntax-spec blah blah
+
+% TODO: not sure why this isn't properly centering...
+\begin{center}
+  \begin{tikzpicture}[
+    box/.style={
+      rectangle, draw, align=center,
+      minimum width=2.2cm, minimum height=1.1cm,
+      },
+      label/.style={ midway, font=\small },
+      every path/.style={-Stealth, thick}
+    ]
+    \node[box] (a) at (-2, 2) {\miniDusa{} +\\ extensions};
+    \node[box] (b) at ( 2, 2) {Core\\ \miniDusa{}};
+    \node[box] (c) at ( 2, 0) {Racket\\with runtime};
+    \node[box, shape=ellipse] (d) at (-2, 0) {Solutions};
+    
+    % janky but it might work
+    \draw[loop right] (b) to (b) node[font=\small, right, xshift=1.4cm, yshift=-0.7cm] {Check};
+    
+    \draw (a) -- (b) node[label, above] {Expand};
+    \draw (b) -- (c) node[label, left] {Compile};
+    \draw (c) -- (d) node[label, below] {Solve};
+  \end{tikzpicture}
+\end{center}
 
 \section{Interoperability}
 

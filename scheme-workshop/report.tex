@@ -115,7 +115,7 @@ assigning the same color to adjacent nodes as follows to complete the \miniDusa{
 \begin{verbatim}
   (forbid (edge X Y)
           ((color X) is C)
-          ((color Y) is C))
+          ((color Y) is C)))
 \end{verbatim}
   % ((ok) is {#t})
   % (((ok) is {#f}) :- (edge X Y)
@@ -154,44 +154,38 @@ and rules from earlier:
 
 In fact, we (conveniently) implement \texttt{forbid} and similar constraints
 as macros too!
-% this is an instance of syntax-spec + DSL making impl easier :)
+This is an instance of the project architecture simplifying the implementation effort.
 
-Macros are allowed to expand into a collection of facts and rules. The
-\texttt{syntax-spec} metalangauge gives us the ability to define macros
-expanding to the core syntax, and to run static validation of the fully-expanded
-code at compile time. 
-
-% something like the example above is made possible through
-% syntax-spec blah blah
-
-% reiterate that due to how syntax-spec is set-up, we get
-% nice expansion into core miniDusa to do some checks before
-% going any farther. i think that pattern is hard without syntax-spec
-% META: see this is why i was unsure about the order of these subsections
-
+The \texttt{define-dsl-syntax} form used above is provided by \syntaxspec{},
+allowing \miniDusa{} macros to be carefully expanded into a slim core syntax.
+This enables a static validation pass before further generation of Racket code,
+as shown in the figure below:
 % TODO: not sure why this isn't properly centering...
-\begin{center}
-  \begin{tikzpicture}[
-    box/.style={
-      rectangle, draw, align=center,
-      minimum width=2.2cm, minimum height=1.1cm,
-      },
-      label/.style={ midway, font=\small },
-      every path/.style={-Stealth, thick}
-    ]
-    \node[box] (a) at (-2, 2) {\miniDusa{} +\\ extensions};
-    \node[box] (b) at ( 2, 2) {Core\\ \miniDusa{}};
-    \node[box] (c) at ( 2, 0) {Racket\\with runtime};
-    \node[box, shape=ellipse] (d) at (-2, 0) {Solutions};
-    
-    % janky but it might work
-    \draw[loop right] (b) to (b) node[font=\small, right, xshift=1.4cm, yshift=-0.7cm] {Check};
-    
-    \draw (a) -- (b) node[label, above] {Expand};
-    \draw (b) -- (c) node[label, left] {Compile};
-    \draw (c) -- (d) node[label, below] {Solve};
-  \end{tikzpicture}
-\end{center}
+\begin{figure}[h]
+  \begin{center}
+    \begin{tikzpicture}[
+      box/.style={
+        rectangle, draw, align=center,
+        minimum width=2.2cm, minimum height=1.1cm,
+        },
+        label/.style={ midway, font=\small },
+        every path/.style={-Stealth, thick}
+      ]
+      \node[box] (a) at (-2, 2) {\miniDusa{} +\\ extensions};
+      \node[box] (b) at ( 2, 2) {Core\\ \miniDusa{}};
+      \node[box] (c) at ( 2, 0) {Racket\\with runtime};
+      \node[box, shape=ellipse] (d) at (-2, 0) {Solutions};
+      
+      % janky but it might work
+      \draw[loop right] (b) to (b) node[font=\small, right, xshift=1.4cm, yshift=-0.7cm] {Check};
+      
+      \draw (a) -- (b) node[label, above] {Expand};
+      \draw (b) -- (c) node[label, left] {Compile};
+      \draw (c) -- (d) node[label, below] {Solve};
+    \end{tikzpicture}
+  \end{center}
+  % \caption{The \miniDusa{} pipeline}
+\end{figure}
 
 \section{Interoperability}
 

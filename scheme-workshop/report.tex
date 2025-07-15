@@ -131,40 +131,30 @@ described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
 each of which may be queried by users.
 
 \section{Extensibility via Macros}
+% KEEP IN MIND: this is the part that should be interesting for everyone!
+% even if they don't care about logic programs. phrase with that in mind
 
-We may write \emph{macros} abstracting over the common patterns seen in the
-previous example.
-% The previous example is representative of common patterns that arise in logic
-% programming contexts, and we would prefer to see abstractions over them. 
-Dusa
-provides \texttt{\#forbid} as syntactic sugar over the \texttt{ok} fact and rule
-shown earlier. miniDusa allows for this through user-defineable macros that
-expand into miniDusa core syntax. This also allows users to express constructs
-in their problem domain in a more natural way. Consider the
-\texttt{(edge 'a 'b)} facts from earlier, we can express them in more familiar
-adjacency-list notation.
-The previous example could be rewritten using macros as:
+The encoding of an undirected graph seen above is quite cumbersome. Users can
+write \emph{macros} to abstract over encodings and express constructs in their
+problem domain in a more natural way.
 
-Such macros can ease the language implementation process as well;
+For instance, we can write an \texttt{undirected-graph} macro
+which expands familiar adjacency-list notation into the facts
+and rules from earlier:
 
-The \texttt{ok} pattern from the example is 
-
-conveniently implemented as a
-macro and provided by \miniDusa{} as 
-
-In fact, forbid and other constraints are conveniently implemented as macros
-
+% TODO: ...s here are a little weird...
 \begin{verbatim}
-(define-dsl-syntax undirected-graph ...)
-(define-dsl-syntax forbid ...)
+(define-dsl-syntax undirected-graph logic-macro
+  (syntax-parser ...))
 (logic
   (undirected-graph edge node
-    ('a ['b 'c])  #| ... more ... |# )
-  (((color X) is {'r 'g 'b}) :- (node X))
-  (forbid (edge X Y)
-          ((color X) is C)
-          ((color Y) is C)))
+    ('a ['b 'c]) #| ... more ... |# )
+...
 \end{verbatim}
+
+In fact, we (conveniently) implement \texttt{forbid} and similar constraints
+as macros too!
+% this is an instance of syntax-spec + DSL making impl easier :)
 
 Macros are allowed to expand into a collection of facts and rules. The
 \texttt{syntax-spec} metalangauge gives us the ability to define macros
@@ -173,6 +163,11 @@ code at compile time.
 
 % something like the example above is made possible through
 % syntax-spec blah blah
+
+% reiterate that due to how syntax-spec is set-up, we get
+% nice expansion into core miniDusa to do some checks before
+% going any farther. i think that pattern is hard without syntax-spec
+% META: see this is why i was unsure about the order of these subsections
 
 % TODO: not sure why this isn't properly centering...
 \begin{center}
@@ -200,45 +195,17 @@ code at compile time.
 
 \section{Interoperability}
 
+% syntax spec not only lets us get macros, but also host language interop
+% insert: the code with the contrived example
+% then, talk about how we can use arbitrary racket functions,
+% which is also nice for users: we inherit expressivity and can use libraries/etc
+
 Using \texttt{syntax-spec}, we not only inherit Racket's macro system, we can
 also have richer interoperability with Racket itself. miniDusa allows the user
 to \emph{import} arbitrary Racket functions to be used as functional relations
 within miniDusa. Since running arbitrary functions backwards is impossible, we
 only allow this when all arguments are known, and we want to either bind or
 verify the return value.
-
-% KEEP IN MIND: this is the part that should be interesting for everyone!
-% even if they don't care about logic programs. phrase with that in mind
-
-% probably say a little bit about syntax-spec
-% insert: the diagram
-% do it in this order because it justifies macros?
-
-% TODO: do we want to switch the order of these two subsections?
-
-% the previous example is indicative of many miniDusa programs
-% we want to abstract over common behavior, like the ok stuff
-% dusa provides this as #forbid
-% we conveniently implement it as a macro
-% this is an instance of syntax-spec + DSL making impl easier :)
-
-% users may also want a reusable graph definition, and ideally
-% one that is less verbose. we again can do this with a macro!
-% this is more powerful than before: we expect _users_ to write
-% such macros, not just us as language implementers
-
-% insert: the fully rewritten version.
-% probably not any macro definitions, maybe just with ...
-
-% reiterate that due to how syntax-spec is set-up, we get
-% nice expansion into core miniDusa to do some checks before
-% going any farther. i think that pattern is hard without syntax-spec
-% META: see this is why i was unsure about the order of these subsections
-
-% syntax spec not only lets us get macros, but also host language interop
-% insert: the code with the contrived example
-% then, talk about how we can use arbitrary racket functions,
-% which is also nice for users: we inherit expressivity and can use libraries/etc
 
 % \section{Conclusion}
 % TODO: depending on space, include this. not sure what to say to wrap up

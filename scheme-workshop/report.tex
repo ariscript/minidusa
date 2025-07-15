@@ -68,15 +68,12 @@ is a recently designed logic programming language featuring
 \emph{mutually exclusive choice} as a primitive to enable
 computation of solutions that satisfy constraints.
 
-% TODO: sentence to bridge this gap?
-
-We introduce \miniDusa{}, a \Dusa{}-inspired
+To explore further host integration, we introduce \miniDusa{}, a \Dusa{}-inspired
 % TODO: (nit) italics are awkward here. maybe omit DSL? 
 \emph{hosted domain-specific language} (DSL) implemented using Racket and
 the \syntaxspec{} metalanguage~\cite{ballantyne2024pearl}. % cite docs?
-This architecture lets our implementation inherit tooling and features
-from the host, like macro-extensibility, essentially ``for free''.
-
+This architecture lets us inherit tooling and  extensibility features from the
+host essentially ``for free''.
 
 \section{miniDusa by Example}
 
@@ -149,7 +146,7 @@ and rules from earlier:
 (logic
   (undirected-graph edge node
     ('a ['b 'c]) #| ... more ... |# )
-...
+  ...
 \end{verbatim}
 
 In fact, we (conveniently) implement \texttt{forbid} and similar constraints

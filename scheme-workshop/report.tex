@@ -65,46 +65,62 @@
 
 \Dusa{}~\cite{martens2025dusa} % maybe cite dusa.rocks impl too?
 is a recently designed logic programming language featuring
-\emph{mutually exclusive choice} as a primitive to enable
-computation of solutions that satisfy constraints.
+\emph{mutually exclusive choice} as a primitive 
+to admit multiple solutions which
+capture a range of possibilities.
+% TODO: see if Chris/Rob have any better ideas to characterize
+% to enable computation of solutions that satisfy constraints.
+% some keywords
+% to admit multiple solutions
+% exploring the solution space
+% characterizing possibility spaces
+% ruling out certain combinations
 
-To explore further host integration, we introduce \miniDusa{}, a \Dusa{}-inspired
+We introduce \miniDusa{}, a \Dusa{}-inspired
 % TODO: (nit) italics are awkward here. maybe omit DSL? 
 \emph{hosted domain-specific language} (DSL) implemented using Racket and
 the \syntaxspec{} metalanguage~\cite{ballantyne2024pearl}. % cite docs?
-This architecture lets us inherit tooling and  extensibility features from the
-host essentially ``for free''.
+This architecture lets us provide extensibility and expressivity features
+through integration with Racket, essentially ``for free''.
+% syntactic extensibility and additional expressive power
+% from multi-language interaction with Racket, essentially "for free"".
+% inherit tooling and extensibility features from the host
 
 \section{miniDusa by Example}
 
-A finite-choice logic program describes \emph{solutions}
-(i.e. sets of consistent facts), which are obtained using a \emph{solver}.
+A finite-choice logic program describes solutions
+(i.e. sets of consistent facts), which are obtained using a solver.
 To illuminate the semantics of \miniDusa{}, we walk through
 a program whose solutions are the 3-colorings of some graph:
 
+% TODO: can we fit in that logic is the boundary with Racket?
 \begin{verbatim}
 (logic
   (edge 'a 'b) (edge 'a 'c)  ; ... more ...
   ((edge X Y) :- (edge Y X))
   ((node X) :- (edge X _))
 \end{verbatim}
-A finite-choice logic program consists of \emph{facts} and \emph{rules}.
+
+A finite-choice logic program consists of facts and rules.
 % like Datalog programs. 
 The fact \texttt{(edge 'a 'b)} represents an edge from \texttt{'a} to \texttt{'b}.
 The premise of the rule \texttt{((edge X Y) :- (edge Y X))} will be
 instantiated with this fact to conclude \texttt{(edge 'b 'a)}.
-These facts and rules thus encode an undirected graph.
+The facts and rules above thus encode an undirected graph.
 
 \begin{verbatim}
   (((color X) is {'r 'g 'b}) :- (node X))
 \end{verbatim}
-% TODO: (nit) should this be indented?
-The conclusion of this rule is a \emph{functional proposition}
-(indicated with \texttt{is}), as opposed to the \emph{relational} propositions above.
-Each functional proposition has a unique associated value---for instance,
-the value associated to \texttt{color 'a} will be a
-\emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
+% The conclusion of this rule is a \emph{functional} proposition
+% (indicated with \texttt{is}), as opposed to the relational propositions above.
+% Each functional proposition has a unique associated value---for instance,
+% the value associated to \texttt{color 'a} will be a
+% \emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
 
+The \texttt{is} keyword signals a \emph{functional dependency}
+from a node \texttt{X} to a unique choice among
+\texttt{'r}, \texttt{'g}, or \texttt{'b}. Many solutions will arise,
+each corresponding to a distinct combination of choices made.
 Without any added constraints, the solutions will simply enumerate all
 possible assignments of colors to nodes. We forbid solutions from
 assigning the same color to adjacent nodes as follows to complete the \miniDusa{} program:
@@ -132,7 +148,7 @@ each of which may be queried by users.
 % even if they don't care about logic programs. phrase with that in mind
 
 The encoding of an undirected graph seen above is quite cumbersome. Users can
-write \emph{macros} to abstract over encodings and express constructs in their
+write macros to abstract over encodings and express constructs in their
 problem domain in a more natural way.
 
 For instance, we can write an \texttt{undirected-graph} macro
@@ -195,7 +211,7 @@ as shown in the figure below:
 
 Using \syntaxspec{}, we not only inherit Racket's hygienic macro system---we can
 also have richer interoperability with Racket itself. \miniDusa{} allows users
-to \emph{import} pure Racket functions as functional relations, where the
+to import pure Racket functions as functional relations, where the
 associated value is obtained by calling the function. Ordinary Racket code can
 be used to perform otherwise-frustrating computations, perhaps leveraging
 existing libraries.

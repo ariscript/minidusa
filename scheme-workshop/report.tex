@@ -122,8 +122,12 @@ from a node \texttt{X} to a unique choice among
 \texttt{'r}, \texttt{'g}, or \texttt{'b}. Many solutions will arise,
 each corresponding to a distinct combination of choices made.
 Without any added constraints, the solutions will simply enumerate all
-possible assignments of colors to nodes. We forbid solutions from
-assigning the same color to adjacent nodes as follows to complete the \miniDusa{} program:
+possible assignments of colors to nodes. To forbid solutions from
+assigning the same color to adjacent nodes, 
+the \texttt{forbid} keyword may be used, which
+completes the graph coloring example program:
+% completing the example:
+% as follows to complete the \miniDusa{} program:
 
 \begin{verbatim}
   (forbid (edge X Y)
@@ -143,35 +147,38 @@ We implement a relatively naïve solver based on the ``fact-set semantics''
 described in~\cite{martens2025dusa}. Solving produces a stream of solutions,
 each of which may be queried by users.
 
-\section{Extensibility via Macros}
+\section{Abstracting Over Encodings with Macros}
 % KEEP IN MIND: this is the part that should be interesting for everyone!
 % even if they don't care about logic programs. phrase with that in mind
 
-The encoding of an undirected graph seen above is quite cumbersome. Users can
-write macros to abstract over encodings and express constructs in their
-problem domain in a more natural way.
+% TODO: maybe "undirected graph"?
+The graph encoding above is cumbersome---a common problem
+for encodings of structured data. Unlike in \Dusa{}, users of 
+\miniDusa{} can write macros to abstract over encodings and express
+constructs in their problem domain in a more natural way.
 
-For instance, we can write an \texttt{undirected-graph} macro
-which expands familiar adjacency-list notation into the facts
-and rules from earlier:
+For instance, the encoding using \texttt{edge} and \texttt{node}
+facts and rules can be expressed with an \texttt{undirected-graph}
+macro which uses familiar adjacency-list notation:
 
 % TODO: ...s here are a little weird...
 \begin{verbatim}
 (define-dsl-syntax undirected-graph logic-macro
-  (syntax-parser ...))
+  (syntax-parser #| ... omitted ... |# ))
 (logic
   (undirected-graph edge node
     ('a ['b 'c]) #| ... more ... |# )
-  ...
+  #| ... as before ... |# )
 \end{verbatim}
 
-In fact, we (conveniently) implement \texttt{forbid} and similar constraints
+In fact, we (conveniently) implement \texttt{forbid} and similar features
 as macros too!
 This is an instance of the project architecture simplifying the implementation effort.
 
 The \texttt{define-dsl-syntax} form used above is provided by \syntaxspec{},
-allowing \miniDusa{} macros to be carefully expanded into a slim core syntax.
-This enables a static validation pass before further generation of Racket code
+which allows \miniDusa{} macros to be carefully expanded into a core syntax
+instead of expanding directly to Racket.
+This enables a static validation pass before further code generation,
 % TODO: do we want a caption on the figure or just a sentence here? maybe space-dependent
 as shown in the figure below:
 
@@ -217,9 +224,9 @@ be used to perform otherwise-frustrating computations, perhaps leveraging
 existing libraries.
 
 \begin{verbatim}
-(define (same-year? y1 y2) ...)
-(logic #:import (same-year?)  ; ... as above ...
-  ((id-dob 'a) is {"07-26-2004"}) ; more ...
+(define (same-year? y1 y2) #| ... omitted |# )
+(logic #:import (same-year?)  ; ... as before
+  ((id-dob 'a) is {"07-26-2004"})  ; ... more
   ((edge X Y) :- ((id-dob X) is A)
                  ((id-dob Y) is B)
                  ((same-year? A B) is #t)))

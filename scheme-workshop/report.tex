@@ -226,7 +226,7 @@ existing libraries.
 \begin{verbatim}
 (define (same-year? y1 y2) #| ... omitted |# )
 (logic #:import (same-year?)  ; ... as before
-  ((id-dob 'a) is {"07-26-2004"})  ; ... more
+  ((id-dob 'a) is {"01/28/1995"})  ; ... more
   ((edge X Y) :- ((id-dob X) is A)
                  ((id-dob Y) is B)
                  ((same-year? A B) is #t)))

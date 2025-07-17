@@ -117,15 +117,15 @@ The facts and rules above thus encode an undirected graph.
 % the value associated to \texttt{color 'a} will be a
 % \emph{choice} among \texttt{'r}, \texttt{'g}, and \texttt{'b}.
 
-The \texttt{is} keyword signals a \emph{functional dependency}
-from a node \texttt{X} to a unique choice among
-\texttt{'r}, \texttt{'g}, or \texttt{'b}. Many solutions will arise,
+The \texttt{is} keyword signals a \emph{functional dependency}---%
+\texttt{color} acts as a function, mapping each node \texttt{X} to a unique
+choice of color. Many solutions will arise,
 each corresponding to a distinct combination of choices made.
-Without any added constraints, the solutions will simply enumerate all
+Without any added constraints, the solutions will enumerate all
 possible assignments of colors to nodes. To forbid solutions from
 assigning the same color to adjacent nodes, 
 the \texttt{forbid} keyword may be used, which
-completes the graph coloring example program:
+completes the graph coloring example:
 % completing the example:
 % as follows to complete the \miniDusa{} program:
 

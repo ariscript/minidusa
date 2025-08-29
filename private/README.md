@@ -8,6 +8,7 @@ We split our implementation into a few different files:
   - some tests for solving simple programs from AST
 - `database.rkt`: abstraction over the auxiliary data structure
   so we can change our internal representation for efficiency
+- `data.rkt`: definitions for common structures
 
 The `runtime.rkt` file contains relatively comprehensive
 developer-facing documentation as comments throughout.

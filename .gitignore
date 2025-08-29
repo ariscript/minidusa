@@ -5,4 +5,5 @@ present.html
 compiled/
 scribblings/
 !scribblings/*.scrbl
+!submission/scribblings/
 doc/

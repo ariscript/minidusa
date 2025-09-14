@@ -104,6 +104,7 @@
 
  ;; <logic-term> ::= <ID>
  ;;                | <DATUM>
+ ;;                | (rkt <racket-expr>)
  (nonterminal/exporting logic-term
    (~> v:id
        (if (lookup #'v (binding-class-predicate logic-var))
@@ -120,6 +121,7 @@
    b:boolean
    s:string
    ((~datum quote) s:id)
+   ((~datum rkt) e:racket-expr)
    c:char)
  )
 

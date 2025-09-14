@@ -10,6 +10,8 @@
           (prefix-in rt: "data.rkt"))
          syntax/parse)
 
+(define RESERVED-NAMES '(is is? :- decls rkt))
+
 ;; EXAMPLE EXPANSIONS!
 #;(logic
     (foo 1))
@@ -202,8 +204,6 @@
                              #'name))
        #'(rt:fact rel-var-comped (list comp-t ...))])))
 
-(define RESERVED-NAMES '(is is? :- decls))
-
 ;; MutSymbolTable MutSymbolSet Identifier Nat -> RacketSyntax
 ;; compiles to a reference to a bound procedure if it was imported;
 ;; otherwise checks the arity (if seen before, or sets arity otherwise)
@@ -232,10 +232,11 @@
 ;; TermSyntax -> RacketSyntax
 (define (compile-term term-stx #:forbid-binds [message #f])
   (syntax-parse term-stx
-    #:datum-literals (#%bind #%ref)
+    #:datum-literals (#%bind #%ref rkt)
     [(#%bind x)
      (if (not message)
          #'(rt:variable 'x)
          (raise-syntax-error #f message #'x))]
     [(#%ref x) #'(rt:variable 'x)]
+    [(rkt e) #'e]
     [x #'x]))

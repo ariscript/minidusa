@@ -7,8 +7,8 @@ SYNTAX RELATED:
 - [ ] Concrete syntax
   - [x] Infix `is`?
   - [ ] Maybe make some singletons not need parens? idk
-- [ ] Improve `<logic-term>` to support more
-  - [ ] Ex: lists
+- [x] Improve `<logic-term>` to support more
+  - [x] Ex: lists
 - [ ] Actually support `_`s
 - [ ] Nested symbols -> expand with extra premises
 - [ ] Be able to import things in a macro itself?
@@ -65,8 +65,7 @@ QUESTIONS FOR US:
 - [ ] Reconsider `fact` and `make-fact` stuff?
 
 QUESTIONS FOR OH:
-- [x] How do we not thread around the symbol tables in annoying ways
-- [ ] Possible to get the demo code?
+- [x] How do we not thread around the symbol tables in annoying way
 - [x] Binding structure for built-ins: how can we check what is a built-in
 - [ ] `_` logic variables
   - [ ] More generally, is there any way for our compiler to generate

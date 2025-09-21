@@ -1,4 +1,4 @@
-\documentclass[dvipsnames,sigplan,screen,review,anonymous,acmthm,nonacm]{acmart}
+\documentclass[dvipsnames,sigplan,screen,acmthm,nonacm]{acmart}
 % \documentclass[dvipsnames,sigplan,screen,acmthm]{acmart}
 
 %%
@@ -154,8 +154,8 @@ each of which may be queried by users.
 % TODO: maybe "undirected graph"?
 The graph encoding above is cumbersome---a common problem
 for encodings of structured data. Unlike in \Dusa{}, users of 
-\miniDusa{} can write macros to abstract over encodings and express
-constructs in their problem domain in a more natural way.
+\miniDusa{} can write hygenic macros to abstract over encodings
+and express constructs in their problem domain in a more natural way.
 
 For instance, the encoding using \texttt{edge} and \texttt{node}
 facts and rules can be expressed with an \texttt{undirected-graph}
@@ -170,10 +170,8 @@ macro which uses familiar adjacency-list notation:
     ('a ['b 'c]) #| ... more ... |# )
   #| ... as before ... |# )
 \end{verbatim}
-
-In fact, we (conveniently) implement \texttt{forbid} and similar features
-as macros too!
-This is an instance of the project architecture simplifying the implementation effort.
+We implement \texttt{forbid} and similar features as macros too!
+% This is an instance of the project architecture simplifying the implementation effort.
 
 The \texttt{define-dsl-syntax} form used above is provided by \syntaxspec{},
 which allows \miniDusa{} macros to be carefully expanded into a core syntax
@@ -183,16 +181,17 @@ This enables a static validation pass before further code generation,
 as shown in the figure below:
 
 % TODO: not sure why this isn't properly centering...
+\vspace{-0.25cm}
 \begin{figure}[h]
   \begin{center}
-    \begin{tikzpicture}[
+    \begin{tikzpicture}[scale=0.7, transform shape,
       box/.style={
         rectangle, draw, align=center,
         minimum width=2.2cm, minimum height=1.1cm,
-        },
-        label/.style={ midway, font=\small },
-        every path/.style={-Stealth, thick}
-      ]
+      },
+      label/.style={ midway, font=\small },
+      every path/.style={-Stealth, thick},
+    ]
       \node[box] (a) at (-2, 2) {\miniDusa{} +\\ extensions};
       \node[box] (b) at ( 2, 2) {Core\\ \miniDusa{}};
       \node[box] (c) at ( 2, 0) {Racket\\with runtime};
@@ -208,6 +207,8 @@ as shown in the figure below:
   \end{center}
   % \caption{The \miniDusa{} pipeline}
 \end{figure}
+\vspace{-0.5cm}
+
 
 \section{Host-Language Interoperability}
 
@@ -216,8 +217,9 @@ as shown in the figure below:
 % then, talk about how we can use arbitrary racket functions,
 % which is also nice for users: we inherit expressivity and can use libraries/etc
 
-Using \syntaxspec{}, we not only inherit Racket's hygienic macro system---we can
-also have richer interoperability with Racket itself. \miniDusa{} allows users
+% Using \syntaxspec{}, we not only inherit Racket's hygienic macro system---we can
+% also have richer interoperability with Racket itself. 
+\miniDusa{} allows users
 to import pure Racket functions as functional relations, where the
 associated value is obtained by calling the function. Ordinary Racket code can
 be used to perform otherwise-frustrating computations, perhaps leveraging
@@ -232,10 +234,11 @@ existing libraries.
                  ((same-year? A B) is #t)))
 \end{verbatim}
 
-Here, date parsing is handled by Racket to add edges between nodes
-with the same birth year. While \Dusa{} has a limited number of
-hard-coded built-in functional relations, \miniDusa{} leverages
-its status as a hosted DSL to increase expressivity.
+Here, date parsing can be easily handled by Racket.
+% to add edges between nodes with the same birth year.
+While \Dusa{} has a limited number of hard-coded built-in functional relations,
+\miniDusa{} leverages its status as a hosted DSL to import arbitrary
+relations for increased expressivity.
 
 % \section{Conclusion}
 % TODO: depending on space, include this. not sure what to say to wrap up

@@ -227,7 +227,7 @@
             expected-arity
             arity)
            rel-id))
-        #`'#,rel-id)))
+        #`#'#,rel-id)))
 
 ;; TermSyntax -> RacketSyntax
 (define (compile-term term-stx #:forbid-binds [message #f])

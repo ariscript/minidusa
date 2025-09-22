@@ -179,12 +179,13 @@
      (bar)
      ((foo X) :- ((bar) is X) (baz))
      (baz))
-   (rt:program (list (rt:rule (rt:rule-frag 'bar '() '() #f) '())
-                     (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '() #f)
-                              (list (rt:fact 'bar '() (rt:variable 'X))
-                                    (rt:fact 'baz '())))
-                     (rt:rule (rt:rule-frag 'baz '() '() #f) '()))
-               '()))
+   (rt:program
+    (list (rt:rule (rt:rule-frag 'bar '() '() #f) '())
+          (rt:rule (rt:rule-frag 'foo (list (rt:variable 'X)) '() #f)
+                   (list (rt:fact 'bar '() (rt:variable 'X))
+                         (rt:fact 'baz '())))
+          (rt:rule (rt:rule-frag 'baz '() '() #f) '()))
+    '()))
 
   ;; some error cases
 

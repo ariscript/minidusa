@@ -213,7 +213,7 @@
 
     ; 'tried = #t for our purposes
     (define (conclusion=? a b)
-      (and (equal? (rule-frag-name a) (rule-frag-name b))
+      (and (bound-identifier=? (rule-frag-name a) (rule-frag-name b))
            (equal? (rule-frag-terms a) (rule-frag-terms b))
            (equal? (rule-frag-choices a) (rule-frag-choices b))
            (equal? (not (rule-frag-is?? a)) (not (rule-frag-is?? b)))))
@@ -298,7 +298,7 @@
 
   ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
-    (and (symbol=? (fact-rel open) (fact-rel fact))
+    (and (bound-identifier=? (fact-rel open) (fact-rel fact))
          (andmap similar?
                  (fact-terms open)
                  (fact-terms fact))
@@ -306,7 +306,7 @@
                   (none? (fact-value fact)))
              (similar? (fact-value open) (fact-value fact)))))
 
-  (if (symbol? (fact-rel open))
+  (if (not (procedure? (fact-rel open)))
       (db-filter looks-like? db)
       ; otherwise, we have a proc, which we run on the result of closing terms
       ; (which will always be fully groundable, by our static checks)
@@ -407,7 +407,7 @@
 ;; this solution, either as a functional relation or a normal relation
 (define (has sol rel . terms)
   (define (same-attr f)
-    (and (equal? (fact-rel f) rel)
+    (and (bound-identifier=? (fact-rel f) rel)
          (equal? (fact-terms f) terms)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
   (not (db-empty? (db-filter same-attr (solution-database sol)))))
@@ -418,7 +418,7 @@
 ;; in the solution; returns NONE if the attribute is not a functional relation
 (define (get sol rel . terms)
   (define (same-attr f)
-    (and (equal? (fact-rel f) rel)
+    (and (bound-identifier=? (fact-rel f) rel)
          (equal? (fact-terms f) terms)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
   ;; TODO: this raises a bad error currently when the fact is not found

@@ -1,8 +1,7 @@
 #lang racket
 
 (module+ test
-  (require rackunit
-           "../main.rkt")
+  (require "../testing.rkt")
 
   (check-equal?
    (stream->list (all (logic (foo 1))))

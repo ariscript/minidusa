@@ -1,10 +1,9 @@
 #lang racket
 
 (module+ test
-  (require rackunit
-           syntax-spec-v3
+  (require "../testing.rkt"
            (for-syntax (only-in syntax/parse syntax-parse define/syntax-parse))
-           "../main.rkt")
+           syntax-spec-v3)
 
   (check-equal?
    (length (stream->list (all (logic
@@ -129,5 +128,5 @@
    (stream->list (all (logic
                         (mydecl)
                         ((foo 2) :- (foo 1)))))
-   '()
-   #;(list (solution (db-of (fact 'foo '(2)) (fact 'foo '(1)))))))
+   #;(list (solution (db-of (fact 'foo '(1)))))
+   (list (solution (db-of (fact 'foo '(2)) (fact 'foo '(1)))))))

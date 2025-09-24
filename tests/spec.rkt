@@ -3,14 +3,23 @@
 (module+ test
   (require "../testing.rkt")
 
-  (check-equal?
+  ;; since the expanded program has syntax objects in it, expansion is hard
+  ;; to test. perhaps we don't actually want to test this (just extensionally,
+  ;; or test the compilation helpers directly), but we already wrote these.
+  ;; so, this tests by smushing the syntax objects in the ast to just the
+  ;; underlying symbols, then comparing for structural equality.
+  ;; hygiene is tested separately through extensional integration tests.
+  (define (check-equal/unhygenic? ast ast-with-symbols)
+    (check-equal? (smush-syntax/program ast) ast-with-symbols))
+  
+  (check-equal/unhygenic?
    (logic
      (foo 1))
    (program (list (rule (rule-frag 'foo '(1) '() #f)
                               '()))
                '()))
   
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      ((foo 2) :- (foo 1))
      (foo 1))
@@ -20,7 +29,7 @@
                               '()))
                '()))
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      (foo "abc")
      ((bar #t 'a) is {1 2 #\c}))
@@ -36,7 +45,7 @@
      (convert-compile-time-error
       (logic ((foo X) :- ((bar) is X) (baz))))))
   
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      (bar)
      ((foo X) :- ((bar) is X) (baz))
@@ -80,7 +89,7 @@
 
   ;; larger examples
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      (decls (parent 'alice 'bob)
             (decls (parent 'bob 'carol))
@@ -108,7 +117,7 @@
                              (list (variable 'Z) (variable 'Y))))))
     '()))
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      ;; these are unbound relation names, because this is a placeholder example
      ;; this is a way to declare that
@@ -141,7 +150,7 @@
 
   ;; importing tests
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic #:import ([a add1])
      ((foo) :- ((a 0) is 1)))
    (program
@@ -149,7 +158,7 @@
                    (list (fact add1 '(0) 1))))
     '()))
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic #:import ([p +])
      ((foo) :- ((p 1 2) is 3))
      ((bar X) :- ((p 1 2 3) is X)))
@@ -160,7 +169,7 @@
                    (list (fact + '(1 2 3) (variable 'X)))))
     '()))
   
-  (check-equal?
+  (check-equal/unhygenic?
    (logic #:import [add1]
      ((foo) :- ((add1 0) is 1)))
    (program
@@ -168,7 +177,7 @@
                    (list (fact add1 '(0) 1))))
     '()))
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic #:import ([add1 add1])
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
@@ -211,7 +220,7 @@
         ((foo X) :- ((add1 X) is 2))))))
 
   ;; is? rules
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      (((a) is? {1}) :- ((a) is 1))
      ((a) is {1})
@@ -230,7 +239,7 @@
       (logic
         ((foo) :- ((foo) is? 1))))))
 
-  (check-equal?
+  (check-equal/unhygenic?
    (logic
      (decls ((a) is? {#t})))
    (program

@@ -40,7 +40,8 @@
 (struct fact [rel terms value] #:transparent
   #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     (and (bound-identifier=? (fact-rel self) (fact-rel other))
+     (and (or (equal? (fact-rel self) (fact-rel other))  ; phys equal for procs
+              (bound-identifier=? (fact-rel self) (fact-rel other)))
           (rec (fact-terms self) (fact-terms other))
           (rec (fact-value self) (fact-value other))))
    (define (hash-proc self rec)
@@ -62,7 +63,7 @@
 ;; - Datum
 ;; - Variable
 
-;; An OpenFact is a (fact Symbol [ListOf Term] [Option Term])
+;; An OpenFact is a (fact Syntax [ListOf Term] [Option Term])
 ;; It represents a fact that has not yet been fully grounded.
 
 ;; A Constraint is a (constraint Syntax [ListOf Datum] [NEList Datum])
@@ -100,7 +101,11 @@
 (struct rule-frag [name terms choices is??] #:transparent
  #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     (and (bound-identifier=? (rule-frag-name self) (rule-frag-name other))
+     ;; this first check is a hack, so that symbol comparison works in tests...
+     ;; TODO: fix this by implementing a more proper equality check
+     (and (or (equal? (rule-frag-name self) (rule-frag-name other))
+              (bound-identifier=? (rule-frag-name self)
+                                  (rule-frag-name other)))
           (rec (rule-frag-terms self) (rule-frag-terms other))
           (rec (rule-frag-choices self) (rule-frag-choices other))
           (rec (rule-frag-is?? self) (rule-frag-is?? other))))

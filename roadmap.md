@@ -6,12 +6,6 @@ In progress:
     the right notions of equality (`bound-identifier=?` apparently)
 - Better motivating examples for macro hygeine
 
-Direct next steps:
-- Allow arbitrary expressions (maybe with syntactic boundary for parsing)
-  - Then, the only Dusa features unsupported are running things backwards
-- See `TODO.md` for more fixes and clean-ups
-  - Maybe some stuff from there should be moved here...
-
 - Better integration with Racket, like displaying / manipulating solutions
   - Example: drawing images on a grid, like `cell X Y is {castle, ...}`
   - More interesting: what is the right API for doing this?

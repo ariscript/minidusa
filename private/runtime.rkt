@@ -2,7 +2,8 @@
 
 (provide all
          has
-         get)
+         get
+         soln->factset)
 
 (require racket/stream
          "data.rkt"
@@ -213,7 +214,7 @@
 
     ; 'tried = #t for our purposes
     (define (conclusion=? a b)
-      (and (equal? (rule-frag-name a) (rule-frag-name b))
+      (and (bound-identifier=? (rule-frag-name a) (rule-frag-name b))
            (equal? (rule-frag-terms a) (rule-frag-terms b))
            (equal? (rule-frag-choices a) (rule-frag-choices b))
            (equal? (not (rule-frag-is?? a)) (not (rule-frag-is?? b)))))
@@ -298,7 +299,7 @@
 
   ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
-    (and (symbol=? (fact-rel open) (fact-rel fact))
+    (and (bound-identifier=? (fact-rel open) (fact-rel fact))
          (andmap similar?
                  (fact-terms open)
                  (fact-terms fact))
@@ -306,7 +307,7 @@
                   (none? (fact-value fact)))
              (similar? (fact-value open) (fact-value fact)))))
 
-  (if (symbol? (fact-rel open))
+  (if (not (procedure? (fact-rel open)))
       (db-filter looks-like? db)
       ; otherwise, we have a proc, which we run on the result of closing terms
       ; (which will always be fully groundable, by our static checks)
@@ -402,27 +403,32 @@
               (rule-frag-terms frag)
               (rule-frag-choices frag)))
 
+;; same-attr: Fact Relation Terms -> Bool
+;; determines if the attr in the given fact matches those of the given terms
+(define (same-attr f rel terms)
+  (and (or (eq? (fact-rel f) rel)  ; for proc + symbols
+           (and (syntax? (fact-rel f))
+                (syntax? rel)
+                (bound-identifier=? (fact-rel f) rel)))
+       (equal? (fact-terms f) terms)))
+
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given relation on the provided terms exists in
 ;; this solution, either as a functional relation or a normal relation
 (define (has sol rel . terms)
-  (define (same-attr f)
-    (and (equal? (fact-rel f) rel)
-         (equal? (fact-terms f) terms)))
+  (define db (filter-and-smush (solution-database sol)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
-  (not (db-empty? (db-filter same-attr (solution-database sol)))))
+  (not (db-empty? (db-filter (lambda (f) (same-attr f rel terms)) db))))
 
 ;; get: Solution Symbol Datum ... -> Datum
 ;; Returns the value associated with the given attribute in this
 ;; solution, if one exists. Raises an error if the attribute is not
 ;; in the solution; returns NONE if the attribute is not a functional relation
 (define (get sol rel . terms)
-  (define (same-attr f)
-    (and (equal? (fact-rel f) rel)
-         (equal? (fact-terms f) terms)))
+  (define db (filter-and-smush (solution-database sol)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
   ;; TODO: this raises a bad error currently when the fact is not found
-  (fact-value (db-first (db-filter same-attr (solution-database sol)))))
+  (fact-value (db-first (db-filter (lambda (f) (same-attr f rel terms)) db))))
 
 ;; lookup: Solution Symbol Datum ... -> [ListOf [ListOf Datum]]
 ;; Query the solution for a proposition of the form provided. Providing
@@ -431,57 +437,9 @@
 ;; If provided with _more_ arguments than the original definition, `lookup`
 ;; raises an error.
 
-;; facts: Solution -> [ListOf Fact]
-;; Return a list of all known facts in this solution.
-
-(module+ test
-  (require rackunit)
-
-  (define simple-program
-    (program
-     (list (rule (rule-frag 'foo '(1) '(a) #f) '()))
-     '()))
-  
-  (check-equal?
-   (stream->list (all simple-program))
-   (list (solution (db-of (fact 'foo '(1) 'a)))))
-
-  (check-equal?
-   (has (stream-first (all simple-program)) 'foo 1)
-   #t)
-  
-  (check-equal?
-   (has (stream-first (all simple-program)) 'foo 2)
-   #f)
-
-  (check-equal?
-   (get (stream-first (all simple-program)) 'foo 1)
-   'a)
-
-  (check-exn
-   ;; TODO: make this error message better
-   #rx""
-   (lambda () (get (stream-first (all simple-program)) 'foo 2)))
-  
-  ;; we can run imported relations
-  (check-equal?
-   (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() '() #f)
-                                   (list (fact add1 '(0) 1))))
-                       '())))
-   (list (solution (db-of (make-fact 'foo '())))))
-
-  (check-equal?
-   (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() '() #f)
-                                   (list (fact * '(0 1 2) 1))))
-                       '())))
-   (list (solution (db-of))))
-
-  ;; example where we bind a variable based on an import
-  (check-equal?
-   (stream->list (all (program
-                       (list (rule (rule-frag 'foo '() (list (variable 'X)) #f)
-                                   (list (fact + '(1 2 3 4) (variable 'X)))))
-                       '())))
-   (list (solution (db-of (make-fact 'foo '() 10))))))
+;; soln->factset: Solution -> [SetOf Fact]
+;; Return a list of all known facts in this solution
+;; facts here contain symbols (not syntax objects), and facts with fresh
+;; relation names are filtered out
+(define (soln->factset soln)
+  (db->factset (solution-database soln)))

@@ -3,7 +3,8 @@
 (require racket/set)
 
 (provide (except-out (all-defined-out)
-                     (struct-out database)))
+                     (struct-out database)
+                     db-only-original))
 
 (require "data.rkt")
 
@@ -41,8 +42,9 @@
             ; this is important for later positivity checks
             (for/set ([c (database-constraints db)]
                       #:when
-                      (not (and (equal? (fact-rel f) (constraint-rel c))
-                                (equal? (fact-terms f) (constraint-terms c)))))
+                      (not (and (equal? (fact-terms f) (constraint-terms c))
+                                (bound-identifier=? (fact-rel f)
+                                                    (constraint-rel c)))))
               c)))
 
 ;; db-add-constraint : Constraint Database -> Database
@@ -72,8 +74,8 @@
   ;; Determine if the given fact has the same attribute as
   ;; rel and terms.
   (define (attr-like? f)
-    (and (equal? (fact-rel f) rel)
-              (equal? (fact-terms f) terms)))
+    (and (bound-identifier=? (fact-rel f) rel)
+         (equal? (fact-terms f) terms)))
   (not (db-empty? (db-filter attr-like? db))))
 
 ;; db-filter : [Fact -> Boolean] Database -> Database
@@ -100,14 +102,14 @@
   ;; different values.
   ;; This should only be called when to-add is a Fact.
   (define (fact-consistent? known)
-    (not (and (equal? (fact-rel to-add) (fact-rel known))
+    (not (and (bound-identifier=? (fact-rel to-add) (fact-rel known))
               (equal? (fact-terms to-add) (fact-terms known))
               (not (equal? (fact-value to-add) (fact-value known))))))
 
   ;; constraint-valid? : Constraint Fact -> Boolean
   ;; Determine if the fact is consistent given the constraint c.
   (define (constraint-valid? c f)
-    (not (and (equal? (fact-rel f) (constraint-rel c))
+    (not (and (bound-identifier=? (fact-rel f) (constraint-rel c))
               (equal? (fact-terms f) (constraint-terms c))
               (set-member? (constraint-none-of c) (fact-value f)))))
 
@@ -118,3 +120,21 @@
              (fact-consistent? fact))
            (for/and ([c (database-constraints db)])
              (constraint-valid? c to-add)))))
+
+;; db-only-original: Database -> Database
+;; filters out the facts with relation syntax objects that aren't original
+(define (db-only-original db)
+  (db-filter fact-stx-original? db))
+
+;; db->factset: Database -> [SetOf Fact]
+;; filters facts with unoriginal syntax then smushes remaining facts into a set
+(define (db->factset db)
+  (for/set ([fact (database-facts (db-only-original db))])
+    (smush-syntax/fact fact)))
+
+;; db->factset: Database -> Database
+;; like db->factset, but maintains the constraints as well
+;; mostly for backwards compatibility
+;; TODO: replace this, if get and set become better
+(define (filter-and-smush db)
+  (struct-copy database db [facts (db->factset db)]))

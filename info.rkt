@@ -1,7 +1,7 @@
 #lang info
 
 (define collection "minidusa")
-(define deps '("base" "syntax-spec-v3"))
+(define deps '("base" "syntax-spec-v3" "rackunit-lib"))
 (define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/minidusa.scrbl"
                        ()

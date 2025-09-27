@@ -1,10 +1,9 @@
 #lang racket
 
 (module+ test
-  (require rackunit
-           syntax-spec-v3
+  (require "../testing.rkt"
            (for-syntax (only-in syntax/parse syntax-parse define/syntax-parse))
-           "../main.rkt")
+           syntax-spec-v3)
 
   (check-equal?
    (length (stream->list (all (logic
@@ -84,13 +83,12 @@
                                         ((color Y) is C))))))
    24)
 
-  (check-equal?
-   (stream->list
-    (all (logic
-           ((a) is? {1})
-           ((b) is {1})
-           ((ok) is {#t})
-           (((ok) is {#f}) :- ((a) is 1)))))
+  (check-all-solutions
+   (logic
+     ((a) is? {1})
+     ((b) is {1})
+     ((ok) is {#t})
+     (((ok) is {#f}) :- ((a) is 1)))
    '())
 
   (define-dsl-syntax demand logic-macro
@@ -101,32 +99,34 @@
                   (((d) is {#t}) :- p ...)
                   (forbid f ((d) is #f)))])))
 
-  (check-equal?
-   (stream->list
-    (all (logic
-           ((species) is {'bear 'bird})
-           (((name) is {'yogi}) :- ((species) is 'bear))
-           (((name) is {'tweety}) :- ((species) is 'bird))
-           ; this is the expansion of demand
-           #;(decls ((d) is? {#f})
-                  (((d) is {#t}) :- ((name) is 'yogi))
-                  (decls ((ok) is {#t})
-                         (((ok) is {#f}) :- ((d) is #f))))
-           (demand d ok ((name) is 'yogi)))))
-   (list (solution (db-of
-                    (fact 'species '() 'bear)
-                    (fact 'name '() 'yogi)
-                    (fact 'ok '() #t)
-                    (fact 'd '() #t)))))
+  (check-all-solutions
+   (logic
+     ((species) is {'bear 'bird})
+     (((name) is {'yogi}) :- ((species) is 'bear))
+     (((name) is {'tweety}) :- ((species) is 'bird))
+     ; this is the expansion of demand
+     #;(decls ((d) is? {#f})
+              (((d) is {#t}) :- ((name) is 'yogi))
+              (decls ((ok) is {#t})
+                     (((ok) is {#f}) :- ((d) is #f))))
+     (demand d ok ((name) is 'yogi)))
+   (list (set
+          (fact 'species '() 'bear)
+          (fact 'name '() 'yogi)
+          (fact 'ok '() #t)
+          (fact 'd '() #t))))
 
   (define-dsl-syntax mydecl logic-macro
     (lambda (stx)
       (syntax-parse stx
-        [(_)
-         #'(foo 1)])))
+        [(_ name)
+         #'(decls (foo)
+                  ((name) :- (foo)))])))
 
-  (check-equal?
-   (stream->list (all (logic
-                        (mydecl)
-                        ((foo 2) :- (foo 1)))))
-   (list (solution (db-of (fact 'foo '(2)) (fact 'foo '(1)))))))
+  (check-all-solutions
+   (logic
+     (mydecl bar)
+     ;; tests that the arities do not conflict, that the fresh symbol foo does
+     ;; not appear in the solution, but bar (deduced using foo) DOES appear
+     ((foo 2) :- (foo 1)))
+   (list (set (fact 'bar '())))))

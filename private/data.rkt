@@ -4,6 +4,8 @@
                      fact)
          (rename-out [make-fact fact]))
 
+(require racket/hash-code)
+
 ;; A [Maybe X] is one of:
 ;; - #f
 ;; - X
@@ -22,26 +24,57 @@
   (equal? NONE x))
 
 ;; A Datum is RacketDatum
-;; Ideally, we would allow any Racket datum here, but this may change
-;; if implementing this is infeasible.
-;; CURRENTLY, it seems as if we will need to be able to compare for equality
-;; to compare attributes and determine when conflicts arise
+;; These will be compared for equality using `equal?`
 
 ;; A Relation is one of
-;; - Symbol, representing relation symbols, or
+;; - Syntax, representing (hygenic) relation names, or
 ;; - Procedure, representing an imported relation
+;; - Symbol, but only to allow users to interact with relations in facts
 
 ;; A Fact is a (fact Relation [ListOf Datum] [Option Datum]).
 ;; It represents a known fact (either given or deduced) in the database.
-;; Currently, stored facts will always have Symbols, since imported
-;; relations are computed repeatedly and not cached.
+;; Currently, stored facts will never store a procedure for the relation,
+;; since imported relations are computed repeatedly and not cached.
 
 ;; name + terms = "attribute"
 ;; if we need to use attributes without values, we can abstract
-(struct fact [rel terms value] #:transparent)
+(struct fact [rel terms value] #:transparent
+  #:methods gen:equal+hash
+  [(define (equal-proc self other rec)
+     ;; this first check is a hack, so that symbol comparison works in tests...
+     ;; TODO: fix this by implementing a more proper equality check
+     (and (or (eq? (fact-rel self) (fact-rel other))  ; for proc + symbols
+              (and (syntax? (fact-rel self))
+                   (syntax? (fact-rel other))
+                   (bound-identifier=? (fact-rel self) (fact-rel other))))
+          (rec (fact-terms self) (fact-terms other))
+          (rec (fact-value self) (fact-value other))))
+   (define (hash-proc self rec)
+     (hash-code-combine (eq-hash-code struct:fact)
+                        (rec (fact-terms self))
+                        (rec (fact-value self))))
+   (define (hash2-proc self rec)
+     (hash-code-combine (eq-hash-code struct:fact)
+                        (rec (fact-terms self))
+                        (rec (fact-value self))))])
 
 (define (make-fact rel terms [value NONE])
   (fact rel terms value))
+
+;; fact-stx-original?: Fact -> Bool
+;; determines whether the fact's relation is syntax coming from a macro or not
+(define (fact-stx-original? f)
+  ;; strip off layer of indirection from syntax-spec
+  (define from (and (syntax? (fact-rel f))
+                    (syntax-property (fact-rel f) 'compiled-from)))
+  (and from (syntax-original? from)))
+
+;; smush-syntax/fact: Fact -> Fact
+;; replaces the syntax object in a fact with its underlying symbol
+;; (maybe the "signature" could be more descriptive, but this is clear imo)
+(define (smush-syntax/fact f)
+  (define rel (fact-rel f))
+  (struct-copy fact f [rel (if (procedure? rel) rel (syntax->datum rel))]))
 
 ;; A Variable is a (variable Symbol)
 (struct variable [name] #:transparent)
@@ -50,15 +83,28 @@
 ;; - Datum
 ;; - Variable
 
-;; An OpenFact is a (fact Symbol [ListOf Term] [Option Term])
+;; An OpenFact is a (fact Syntax [ListOf Term] [Option Term])
 ;; It represents a fact that has not yet been fully grounded.
 
-;; A Constraint is a (constraint Symbol [ListOf Datum] [NEList Datum])
+;; A Constraint is a (constraint Syntax [ListOf Datum] [NEList Datum])
 ;; It represents a constraint on any potnetial fact that would look like
 ;; this one, where the values cannot be any of the ones in the value list.
-(struct constraint [rel terms none-of])
+(struct constraint [rel terms none-of]
+  #:methods gen:equal+hash
+  [(define (equal-proc self other rec)
+     (and (bound-identifier=? (constraint-rel self) (constraint-rel other))
+          (rec (constraint-terms self) (constraint-terms other))
+          (rec (constraint-none-of self) (constraint-none-of other))))
+   (define (hash-proc self rec)
+     (hash-code-combine (eq-hash-code struct:constraint)
+                        (rec (constraint-terms self))
+                        (rec (constraint-none-of self))))
+   (define (hash2-proc self rec)
+     (hash-code-combine (eq-hash-code struct:constraint)
+                        (rec (constraint-terms self))
+                        (rec (constraint-none-of self))))])
 
-;; A RuleFragment is (rule-frag Symbol [ListOf Term] [ListOf Term] Boolean)
+;; A RuleFragment is (rule-frag Syntax [ListOf Term] [ListOf Term] Boolean)
 ;; It is an _internal representation_ of the source syntax, which in
 ;; general may contain variables. These can be combined to form rules
 ;; or facts (closed rules with no premises).
@@ -67,12 +113,32 @@
 ;; terms will be desugared in an ANF-like pass.
 
 ;; A ClosedRuleFragment is
-;; (rule-frag Symbol [ListOf Datum] [ListOf Datum] [OneOf Boolean 'tried])
+;; (rule-frag Syntax [ListOf Datum] [ListOf Datum] [OneOf Boolean 'tried])
 ;; it represents a rule fragment where all variables have been substituted
 ;; for data. Note that a RuleFragment is "open by default", while in contrast
 ;; a Fact is "closed by default", hence the inconsistent naming convention
 
-(struct rule-frag [name terms choices is??] #:transparent)
+(struct rule-frag [name terms choices is??] #:transparent
+  #:methods gen:equal+hash
+  [(define (equal-proc self other rec)
+     (and (or (eq? (rule-frag-name self) (rule-frag-name other))
+              (and (syntax? (rule-frag-name self))
+                   (syntax? (rule-frag-name other))
+                   (bound-identifier=? (rule-frag-name self)
+                                       (rule-frag-name other))))
+          (rec (rule-frag-terms self) (rule-frag-terms other))
+          (rec (rule-frag-choices self) (rule-frag-choices other))
+          (rec (rule-frag-is?? self) (rule-frag-is?? other))))
+   (define (hash-proc self rec)
+     (hash-code-combine (eq-hash-code struct:rule-frag)
+                        (rec (rule-frag-terms self))
+                        (rec (rule-frag-choices self))
+                        (rec (rule-frag-is?? self))))
+   (define (hash2-proc self rec)
+     (hash-code-combine (eq-hash-code struct:rule-frag)
+                        (rec (rule-frag-terms self))
+                        (rec (rule-frag-choices self))
+                        (rec (rule-frag-is?? self))))])
 
 ;; A Rule is a (rule RuleFragment [ListOf OpenFact])
 ;; It represents a conclusion which follows from the (0 or more) premises

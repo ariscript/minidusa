@@ -29,21 +29,22 @@ RUNTIME RELATED:
 - [ ] Port over Dusa's test suite (once we support more things...)
 
 SYNTAX OBJECTS:
-- [ ] Keep syntax objects around at runtime and compare them for equality using
+- [x] Keep syntax objects around at runtime and compare them for equality using
   `bound-identifier=?`
-- [ ] In general, filter fresh relation names out of solutions
+- [x] In general, filter fresh relation names out of solutions
   - `syntax-original?` on syntax objects can tell if it has ever come from the
     template of a macro as opposed to being original syntax
   - syntax-spec may not preserve this; we may have to try using the
     `compiled-from` property too which maps back to the surface syntax first
     - We may need to do this anyways to display the underlying symbol (or use
       `syntax->datum`)
-- [ ] Extend with test features to be able to test fresh relation names
+- [x] Extend with test features to be able to test fresh relation names
   - We may want a deterministic name mangler in these cases (try not to be too
     fragile though!), or maybe some "up to alpha equivalence" helpers
   - We might be able to get away with just observing these effects on public
     relations, but these could still be useful even for print debugging
   - This should definitely go in a different module
+  - [ ] There still should be better test functions
 
 - [ ] Once we have more special test features, we may want to add
   non-determinism and control it when testing (would fix some looping cases)
@@ -54,7 +55,7 @@ CODE IMPROVEMENTS:
   - [x] Database abstraction to enable replacing with tries?
 - [ ] `NONE` getting exposed to end user in solutions
   - [ ] At the very least we can make it so it doesn't get printed
-  - [ ] Make sure that we don't have generated symbols either
+  - [x] Make sure that we don't have generated symbols either
   - [ ] We can probably turn this knob when we add more solution querying
 - [ ] Maybe having an `attribute` struct would be better
   - [ ] Currently, lots of duplication when compiling attributes

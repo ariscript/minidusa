@@ -4,7 +4,9 @@
   (require "../testing.rkt")
 
   (define simple-program
-    (logic ((foo 1) is {'a})))
+    (program
+     (list (rule (rule-frag 'foo '(1) '(a) #f) '()))
+     '()))
 
   (check-equal?
    (has (stream-first (all simple-program)) 'foo 1)

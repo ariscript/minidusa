@@ -214,7 +214,7 @@
 
     ; 'tried = #t for our purposes
     (define (conclusion=? a b)
-      (and (bound-identifier=? (rule-frag-name a) (rule-frag-name b))
+      (and (rel=? (rule-frag-name a) (rule-frag-name b))
            (equal? (rule-frag-terms a) (rule-frag-terms b))
            (equal? (rule-frag-choices a) (rule-frag-choices b))
            (equal? (not (rule-frag-is?? a)) (not (rule-frag-is?? b)))))
@@ -299,7 +299,7 @@
 
   ;; looks-like? : Fact -> Boolean
   (define (looks-like? fact)
-    (and (bound-identifier=? (fact-rel open) (fact-rel fact))
+    (and (rel=? (fact-rel open) (fact-rel fact))
          (andmap similar?
                  (fact-terms open)
                  (fact-terms fact))
@@ -409,7 +409,7 @@
   (and (or (eq? (fact-rel f) rel)  ; for proc + symbols
            (and (syntax? (fact-rel f))
                 (syntax? rel)
-                (bound-identifier=? (fact-rel f) rel)))
+                (rel=? (fact-rel f) rel)))
        (equal? (fact-terms f) terms)))
 
 ;; has: Solution Symbol Datum ... -> Bool

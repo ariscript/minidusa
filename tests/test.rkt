@@ -240,4 +240,12 @@
               (fact 'b '()))
          (set (fact 'a '() 2)
               (fact 'b '()))))
+
+  ;; TODO: make sure that this plays well with hygiene when possible
+  (check-all-solutions
+   (logic #:extern (foo bar)
+     (foo 1)
+     (bar 2))
+   (list (set (fact 'foo '(1))
+              (fact 'bar '(2)))))
   )

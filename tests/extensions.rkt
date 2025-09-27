@@ -116,17 +116,25 @@
           (fact 'ok '() #t)
           (fact 'd '() #t))))
 
-  (define-dsl-syntax mydecl logic-macro
+  (define-dsl-syntax deduce-name logic-macro
     (lambda (stx)
       (syntax-parse stx
         [(_ name)
          #'(decls (foo)
                   ((name) :- (foo)))])))
 
+  (define-dsl-syntax has-foo-1 logic-macro
+    (lambda (stx)
+      (syntax-parse stx
+        [(_)
+         #'(foo 1)])))
+
   (check-all-solutions
    (logic
-     (mydecl bar)
      ;; tests that the arities do not conflict, that the fresh symbol foo does
      ;; not appear in the solution, but bar (deduced using foo) DOES appear
+     (deduce-name bar)
+     ;; this will again test arity, and that foo 2 is not deduced
+     (has-foo-1)
      ((foo 2) :- (foo 1)))
    (list (set (fact 'bar '())))))

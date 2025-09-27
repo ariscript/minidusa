@@ -18,11 +18,11 @@
  (binding-class rel-var)
  (extension-class logic-macro #:binding-space minidusa)
 
- ;; (logic/importing <imps> <decl> ...)
+ ;; (logic/importing <imps> (<id> ...) <decl> ...)
  (host-interface/expression
-  (logic/importing i:imps d:decl ...)
-  #:binding (nest i (scope (import d) ...))
-  (compile-logic #'i #'(d ...)))
+  (logic/importing i:imps (ex:rel-var ...) d:decl ...)
+  #:binding (nest i (scope (bind ex) ... (import d) ...))
+  (compile-logic #'i #'(ex ...) #'(d ...)))
 
  ;; <imps> ::= (<imp> ...)
  ;; <imp>  ::= x:racket-var
@@ -126,12 +126,16 @@
  )
 
 ;; logic : (logic <decl> ...)
-;;       | (logic #:import [<imp> ...] <decl> ...)
+;;       | (logic #:import [<imp> ...] #:extern [id ...] <decl> ...)
 (define-syntax logic
   (lambda (stx)
     (syntax-parse stx
       [(_ (~or* (~seq #:import imports)
                 (~seq))
+          ;; TODO: is there a way to make it so order doesn't matter?
+          (~or* (~seq #:extern externs)
+                (~seq))
           ds ...)
        #:with imps (or (attribute imports) #'())
-       #'(logic/importing imps ds ...)])))
+       #:with exts (or (attribute externs) #'())
+       #'(logic/importing imps exts ds ...)])))

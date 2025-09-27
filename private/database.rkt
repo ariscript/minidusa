@@ -18,6 +18,10 @@
 (define (db-of . facts)
   (database (apply set facts) (set)))
 
+;; factset->db: [SetOf Fact] -> Database
+(define (factset->db factset)
+  (database factset (set)))
+
 ;; db-empty? : Database -> Boolean
 ;; Returns #f if the database contains facts.
 (define (db-empty? db)
@@ -43,8 +47,7 @@
             (for/set ([c (database-constraints db)]
                       #:when
                       (not (and (equal? (fact-terms f) (constraint-terms c))
-                                (bound-identifier=? (fact-rel f)
-                                                    (constraint-rel c)))))
+                                (rel=? (fact-rel f) (constraint-rel c)))))
               c)))
 
 ;; db-add-constraint : Constraint Database -> Database
@@ -74,7 +77,7 @@
   ;; Determine if the given fact has the same attribute as
   ;; rel and terms.
   (define (attr-like? f)
-    (and (bound-identifier=? (fact-rel f) rel)
+    (and (rel=? (fact-rel f) rel)
          (equal? (fact-terms f) terms)))
   (not (db-empty? (db-filter attr-like? db))))
 
@@ -102,14 +105,14 @@
   ;; different values.
   ;; This should only be called when to-add is a Fact.
   (define (fact-consistent? known)
-    (not (and (bound-identifier=? (fact-rel to-add) (fact-rel known))
+    (not (and (rel=? (fact-rel to-add) (fact-rel known))
               (equal? (fact-terms to-add) (fact-terms known))
               (not (equal? (fact-value to-add) (fact-value known))))))
 
   ;; constraint-valid? : Constraint Fact -> Boolean
   ;; Determine if the fact is consistent given the constraint c.
   (define (constraint-valid? c f)
-    (not (and (bound-identifier=? (fact-rel f) (constraint-rel c))
+    (not (and (rel=? (fact-rel f) (constraint-rel c))
               (equal? (fact-terms f) (constraint-terms c))
               (set-member? (constraint-none-of c) (fact-value f)))))
 

@@ -31,6 +31,13 @@
 ;; - Procedure, representing an imported relation
 ;; - Symbol, but only to allow users to interact with relations in facts
 
+;; rel=?: Relation Relation -> Bool
+(define (rel=? rel1 rel2)
+  (or (eq? rel1 rel2)  ; for symbols and procedures
+      (and (syntax? rel1)
+           (syntax? rel2)
+           (bound-identifier=? rel1 rel2))))
+
 ;; A Fact is a (fact Relation [ListOf Datum] [Option Datum]).
 ;; It represents a known fact (either given or deduced) in the database.
 ;; Currently, stored facts will never store a procedure for the relation,
@@ -43,10 +50,7 @@
   [(define (equal-proc self other rec)
      ;; this first check is a hack, so that symbol comparison works in tests...
      ;; TODO: fix this by implementing a more proper equality check
-     (and (or (eq? (fact-rel self) (fact-rel other))  ; for proc + symbols
-              (and (syntax? (fact-rel self))
-                   (syntax? (fact-rel other))
-                   (bound-identifier=? (fact-rel self) (fact-rel other))))
+     (and (rel=? (fact-rel self) (fact-rel other))
           (rec (fact-terms self) (fact-terms other))
           (rec (fact-value self) (fact-value other))))
    (define (hash-proc self rec)
@@ -64,17 +68,21 @@
 ;; fact-stx-original?: Fact -> Bool
 ;; determines whether the fact's relation is syntax coming from a macro or not
 (define (fact-stx-original? f)
-  ;; strip off layer of indirection from syntax-spec
-  (define from (and (syntax? (fact-rel f))
-                    (syntax-property (fact-rel f) 'compiled-from)))
-  (and from (syntax-original? from)))
+  (define rel (fact-rel f))
+  ;; strip off layer of indirection from syntax-spec, if it is a symbol
+  (define from-if-stx (and (syntax? rel)
+                           (syntax-property rel 'compiled-from)))
+  (or (symbol? rel)
+      (and from-if-stx (syntax-original? from-if-stx))))
 
 ;; smush-syntax/fact: Fact -> Fact
 ;; replaces the syntax object in a fact with its underlying symbol
 ;; (maybe the "signature" could be more descriptive, but this is clear imo)
 (define (smush-syntax/fact f)
   (define rel (fact-rel f))
-  (struct-copy fact f [rel (if (procedure? rel) rel (syntax->datum rel))]))
+  (struct-copy fact f [rel (if (or (symbol? rel) (procedure? rel))
+                               rel
+                               (syntax->datum rel))]))
 
 ;; A Variable is a (variable Symbol)
 (struct variable [name] #:transparent)
@@ -92,7 +100,7 @@
 (struct constraint [rel terms none-of]
   #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     (and (bound-identifier=? (constraint-rel self) (constraint-rel other))
+     (and (rel=? (constraint-rel self) (constraint-rel other))
           (rec (constraint-terms self) (constraint-terms other))
           (rec (constraint-none-of self) (constraint-none-of other))))
    (define (hash-proc self rec)
@@ -104,13 +112,14 @@
                         (rec (constraint-terms self))
                         (rec (constraint-none-of self))))])
 
-;; A RuleFragment is (rule-frag Syntax [ListOf Term] [ListOf Term] Boolean)
+;; A RuleFragment is (rule-frag Relation [ListOf Term] [ListOf Term] Boolean)
 ;; It is an _internal representation_ of the source syntax, which in
 ;; general may contain variables. These can be combined to form rules
 ;; or facts (closed rules with no premises).
 ;; Notably, a Term is an immediate, and does not have nested terms:
 ;; this is a difference from the surface <term> syntax; these nested
 ;; terms will be desugared in an ANF-like pass.
+;; The Relation here will not be a Procedure, currently.
 
 ;; A ClosedRuleFragment is
 ;; (rule-frag Syntax [ListOf Datum] [ListOf Datum] [OneOf Boolean 'tried])
@@ -121,11 +130,7 @@
 (struct rule-frag [name terms choices is??] #:transparent
   #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     (and (or (eq? (rule-frag-name self) (rule-frag-name other))
-              (and (syntax? (rule-frag-name self))
-                   (syntax? (rule-frag-name other))
-                   (bound-identifier=? (rule-frag-name self)
-                                       (rule-frag-name other))))
+     (and (rel=? (rule-frag-name self) (rule-frag-name other))
           (rec (rule-frag-terms self) (rule-frag-terms other))
           (rec (rule-frag-choices self) (rule-frag-choices other))
           (rec (rule-frag-is?? self) (rule-frag-is?? other))))

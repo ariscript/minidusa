@@ -29,5 +29,5 @@
 
 ;; check-all-solutions: Program [ListOf [SetOf Fact]] -> Void
 (define-syntax-rule (check-all-solutions prog expected)
-  (check-equal? (map soln->factset (stream->list (all prog)))
+  (check-equal? (map soln->factset (stream->list (solve prog)))
                 expected))

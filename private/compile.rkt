@@ -70,30 +70,21 @@
      '()))
 
 ;; An CompilerState is a
-;; (compiler-state MutSymbolTable MutSymbolSet MutSymbolSet),
-;; tracking 
+;; (compiler-state MutSymbolTable SymbolSet SymbolSet), tracking which relation
+;; names are imported, external, and arities of the rest (internally defined)
 (struct compiler-state [arities imports externs])
 
 ;; this is the old compile-time function
 ;; ImportsSyntax IdsSyntax LogicSyntax -> RacketSyntax
 (define (compile-logic imports-stx externs-stx logic-stx)
   (define arities (local-symbol-table))
-  (define imports (local-symbol-set))
-  ; add all imported symbols; later we use this to compile attibutes
-  (for ([stx-pair (syntax->list imports-stx)])
-    (syntax-parse stx-pair
-      [[rel-id _]
-       ; we want to put the symbols in our symbol table, not the identifiers,
-       ; otherwise we will not have the right notion of element equality
-       (symbol-set-add! imports #'rel-id)]))
-
-  (define ext-rel-vars (local-symbol-set))
-  #;(apply immutable-symbol-set (syntax->list externs-stx))
-  ; similarly, add in the external variables
-  (for ([ex-id (syntax->list externs-stx)])
-    (symbol-set-add! ext-rel-vars ex-id))
-
-  (define state (compiler-state arities imports ext-rel-vars))
+  (define imports
+    (apply immutable-symbol-set
+           ; grabs all of the ([rel-var _] ...)s
+           (map (lambda (stx-pair) (first (syntax->list stx-pair)))
+                (syntax->list imports-stx))))
+  (define externs (apply immutable-symbol-set (syntax->list externs-stx)))
+  (define state (compiler-state arities imports externs))
 
   (define body
     (let ([compile-decl ((curry compile-decl) state)]

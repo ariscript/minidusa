@@ -175,7 +175,7 @@ characters and backstories for creative purposes.
                                                      " of "
                                                      VillainHome) is Result))))
 
-          (define solution-stream (all story-program))
+          (define solution-stream (solve story-program))
           
           (get (stream-first solution-stream) 'story)]
 
@@ -247,7 +247,8 @@ supported.
  Determines whether the argument is @code{NONE}.
 }
 
-@defproc[(all [program program?]) (stream? solution?)]{
+@; TODO: this actually takes in an optional keyword argument too, and is a macro
+@defproc[(solve [program program?]) (stream? solution?)]{
  Obtain a stream of all possible solutions of the given program
  that is defined via a @code{logic} macro. The stream may be infinite,
  and computing the next item may not always terminate.

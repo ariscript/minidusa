@@ -88,7 +88,7 @@ order to conveniently generate characters and backstories for creative purposes.
                                            VillainHome) is Result))))
 
 ;; we generate lots of story strings; we query the first such string below
-(define solution-stream (all story-program))
+(define solution-stream (solve story-program))
 
 > (get (stream-first solution-stream) 'story)
 "The heroic TA Zack from CT worked with Ari to thwart the wicked prof Ben of NY"

@@ -85,43 +85,43 @@
 
   (check-equal?
    (length (stream->list
-            (all (logic
-                   (edge 'a 'b)
-                   (edge 'b 'c)
-                   ((edge X Y) :- (edge Y X))
-                   ((node X) :- (edge X _))
-                   (((color X) is {1 2 3}) :- (node X))))))
+            (solve (logic
+                     (edge 'a 'b)
+                     (edge 'b 'c)
+                     ((edge X Y) :- (edge Y X))
+                     ((node X) :- (edge X _))
+                     (((color X) is {1 2 3}) :- (node X))))))
    27)
 
   (check-equal?
-   (length (stream->list (all (logic
-                                (edge 'a 'b)
-                                (edge 'b 'c)
-                                ((edge X Y) :- (edge Y X))
-                                ((node X) :- (edge X _))
-                                (((color X) is {1 2 3}) :- (node X))
+   (length (stream->list (solve (logic
+                                  (edge 'a 'b)
+                                  (edge 'b 'c)
+                                  ((edge X Y) :- (edge Y X))
+                                  ((node X) :- (edge X _))
+                                  (((color X) is {1 2 3}) :- (node X))
 
-                                ((ok) is {#t})
-                                (((ok) is {#f}) :- (edge X Y)
-                                                ((color X) is C)
-                                                ((color Y) is C))))))
+                                  ((ok) is {#t})
+                                  (((ok) is {#f}) :- (edge X Y)
+                                                  ((color X) is C)
+                                                  ((color Y) is C))))))
    12)
 
   (check-equal?
-   (length (stream->list (all (logic
-                                (edge 'a 'b)
-                                (edge 'b 'c)
-                                (edge 'a 'c)
-                                (edge 'c 'd)
-                                (edge 'a 'e)
-                                ((edge X Y) :- (edge Y X))
-                                ((node X) :- (edge X _))
-                                (((color X) is {1 2 3}) :- (node X))
+   (length (stream->list (solve (logic
+                                  (edge 'a 'b)
+                                  (edge 'b 'c)
+                                  (edge 'a 'c)
+                                  (edge 'c 'd)
+                                  (edge 'a 'e)
+                                  ((edge X Y) :- (edge Y X))
+                                  ((node X) :- (edge X _))
+                                  (((color X) is {1 2 3}) :- (node X))
 
-                                ((ok) is {#t})
-                                (((ok) is {#f}) :- (edge X Y)
-                                                ((color X) is C)
-                                                ((color Y) is C))))))
+                                  ((ok) is {#t})
+                                  (((ok) is {#f}) :- (edge X Y)
+                                                  ((color X) is C)
+                                                  ((color Y) is C))))))
    24)
 
   ;; - Alice
@@ -165,7 +165,7 @@
               (fact 'bar '(6)))))
 
   (check-equal?
-   (length (stream->list (all
+   (length (stream->list (solve
                           (logic #:import ([s add1])
                             ((run 0) is {'stop 'go})
                             (((run M) is {'stop 'go})
@@ -217,13 +217,13 @@
 
   (check-equal?
    (length (stream->list
-            (all (logic
-                   ((a 1 2 3) is {#t #f})
-                   ((b) is {#t #f})
-                   ((b) is {#t #f})
-                   ((c) is {#t #f})
-                   (bar 1) ; maybe this should be disallowed...
-                   ((bar 2) is {#t #t})))))
+            (solve (logic
+                     ((a 1 2 3) is {#t #f})
+                     ((b) is {#t #f})
+                     ((b) is {#t #f})
+                     ((c) is {#t #f})
+                     (bar 1) ; maybe this should be disallowed...
+                     ((bar 2) is {#t #t})))))
    16)
 
   (check-all-solutions
@@ -241,11 +241,20 @@
          (set (fact 'a '() 2)
               (fact 'b '()))))
 
-  ;; TODO: make sure that this plays well with hygiene when possible
-  (check-all-solutions
-   (logic #:extern (foo bar)
-     (foo 1)
-     (bar 2))
-   (list (set (fact 'foo '(1))
-              (fact 'bar '(2)))))
+  ;; TODO: make sure that this plays well with hygiene
+  (define extern-prog
+    (logic #:extern (foo bar)
+      (foo 1)
+      ((bar 2) :- (foo 2))))
+  
+  (check-equal?
+   (soln->factset (stream-first (solve extern-prog)))
+   (set (fact 'foo '(1))))
+
+  (check-equal?
+   (soln->factset
+    (stream-first (solve #:facts (set (fact 'foo '(2))) extern-prog)))
+   (set (fact 'foo '(1))
+        (fact 'foo '(2))
+        (fact 'bar '(2))))
   )

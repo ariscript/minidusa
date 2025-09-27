@@ -18,6 +18,10 @@
 (define (db-of . facts)
   (database (apply set facts) (set)))
 
+;; factset->db: [SetOf Fact] -> Database
+(define (factset->db factset)
+  (database factset (set)))
+
 ;; db-empty? : Database -> Boolean
 ;; Returns #f if the database contains facts.
 (define (db-empty? db)

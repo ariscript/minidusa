@@ -1,13 +1,14 @@
 #lang racket
 
-(provide all
+(provide (rename-out [solve-opt solve])
          has
          get
          soln->factset)
 
 (require racket/stream
          "data.rkt"
-         "database.rkt")
+         "database.rkt"
+         (for-syntax syntax/parse))
 
 ;; we have some database (D) of known facts
 ;; we want to evolve this database
@@ -61,11 +62,11 @@
 ;; sample : Logic -> [Maybe Solution]
 ;; Obtain one possible solution of the given program, if one exists.
 
-;; all : Logic -> [StreamOf Solution]
+;; all : Logic [SetOf Fact] -> [StreamOf Solution]
 ;; Obtain a stream of all possible solutions of the given program.
 ;; The stream may be infinite, and computing the next item may not
 ;; always terminate.
-(define (all prog)
+(define (solve-entry prog facts)
   ;; result->stream : SolutionResult -> [StreamOf Solution]
   ;; Processes a SolutionResult into a stream of Solution by recursively
   ;; backtracking through all possible intermediate choices.
@@ -78,7 +79,17 @@
   (define (collect-backtracked stack)
     (result->stream (backtrack prog stack)))
 
-  (result->stream (solve prog (db-of) '())))
+  (result->stream (solve prog (factset->db facts) '())))
+
+;; version of all that takes facts as an optional keyword argument
+(define-syntax solve-opt
+  (lambda (stx)
+    (syntax-parse stx
+      [(_ (~or* (~seq #:facts factset)
+                (~seq))
+          prog)
+       #:with facts (or (attribute factset) #'(set))
+       #'(solve-entry prog facts)])))
 
 ;; solve : Logic Database SearchStack -> SolutionResult
 ;; Given a search state and a database of currently known facts, obtain a

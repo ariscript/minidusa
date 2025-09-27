@@ -1,17 +1,10 @@
 #lang racket/base
 
 (module+ test
-  (require "../testing.rkt"
-           racket/stream)
+  (require "../testing.rkt")
 
   (define simple-program
-    (program
-     (list (rule (rule-frag 'foo '(1) '(a) #f) '()))
-     '()))
-  
-  (check-equal?
-   (stream->list (all simple-program))
-   (list (solution (db-of (fact 'foo '(1) 'a)))))
+    (logic ((foo 1) is {'a})))
 
   (check-equal?
    (has (stream-first (all simple-program)) 'foo 1)

@@ -2,7 +2,8 @@
 
 (provide all
          has
-         get)
+         get
+         soln->factset)
 
 (require racket/stream
          "data.rkt"
@@ -402,27 +403,32 @@
               (rule-frag-terms frag)
               (rule-frag-choices frag)))
 
+;; same-attr: Fact Relation Terms -> Bool
+;; determines if the attr in the given fact matches those of the given terms
+(define (same-attr f rel terms)
+  (and (or (eq? (fact-rel f) rel)  ; for proc + symbols
+           (and (syntax? (fact-rel f))
+                (syntax? rel)
+                (bound-identifier=? (fact-rel f) rel)))
+       (equal? (fact-terms f) terms)))
+
 ;; has: Solution Symbol Datum ... -> Bool
 ;; Returns `#t` if the given relation on the provided terms exists in
 ;; this solution, either as a functional relation or a normal relation
 (define (has sol rel . terms)
-  (define (same-attr f)
-    (and (bound-identifier=? (fact-rel f) rel)
-         (equal? (fact-terms f) terms)))
+  (define db (filter-and-smush (solution-database sol)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
-  (not (db-empty? (db-filter same-attr (solution-database sol)))))
+  (not (db-empty? (db-filter (lambda (f) (same-attr f rel terms)) db))))
 
 ;; get: Solution Symbol Datum ... -> Datum
 ;; Returns the value associated with the given attribute in this
 ;; solution, if one exists. Raises an error if the attribute is not
 ;; in the solution; returns NONE if the attribute is not a functional relation
 (define (get sol rel . terms)
-  (define (same-attr f)
-    (and (bound-identifier=? (fact-rel f) rel)
-         (equal? (fact-terms f) terms)))
+  (define db (filter-and-smush (solution-database sol)))
   ;; TODO: maybe raise an error for unexpected arguments / etc?
   ;; TODO: this raises a bad error currently when the fact is not found
-  (fact-value (db-first (db-filter same-attr (solution-database sol)))))
+  (fact-value (db-first (db-filter (lambda (f) (same-attr f rel terms)) db))))
 
 ;; lookup: Solution Symbol Datum ... -> [ListOf [ListOf Datum]]
 ;; Query the solution for a proposition of the form provided. Providing
@@ -431,5 +437,9 @@
 ;; If provided with _more_ arguments than the original definition, `lookup`
 ;; raises an error.
 
-;; facts: Solution -> [ListOf Fact]
-;; Return a list of all known facts in this solution.
+;; soln->factset: Solution -> [SetOf Fact]
+;; Return a list of all known facts in this solution
+;; facts here contain symbols (not syntax objects), and facts with fresh
+;; relation names are filtered out
+(define (soln->factset soln)
+  (db->factset (solution-database soln)))

@@ -8,7 +8,8 @@
           racket/base
           syntax-spec-v3
           (prefix-in rt: "data.rkt"))
-         syntax/parse)
+         syntax/parse
+         syntax/id-table)
 
 (define RESERVED-NAMES '(is is? :- decls rkt))
 
@@ -71,7 +72,7 @@
 ;; this is the old compile-time function
 ;; ImportsSyntax LogicSyntax -> RacketSyntax
 (define (compile-logic imports-stx logic-stx)
-  (define rel-arities (make-hash))
+  (define rel-arities (local-symbol-table))
   (define imported-rel-vars (mutable-set))
   ; add all imported symbols; later we use this to compile attibutes
   (for ([stx-pair (syntax->list imports-stx)])
@@ -214,10 +215,18 @@
   (when (member rel-sym RESERVED-NAMES)
     (raise-syntax-error #f "use of reserved name" rel-id))
 
+  ;; like hash-ref! but not the thunk case for error (just set to a val)
+  ;; i am surprised that something like this isn't in syntax-spec.
+  (define (symbol-table-ref! table key val)
+    (if (symbol-table-has-key? table key)
+        (symbol-table-ref table key)
+        (begin (symbol-table-set! table key val #:allow-overwrite? #t)
+               val)))
+  
   (if (set-member? imports rel-sym)
       ; sets to arity if missing from the table -> will be equal
       rel-id
-      (let ([expected-arity (hash-ref! arities rel-sym arity)])
+      (let ([expected-arity (symbol-table-ref! arities rel-id arity)])
         (unless (= arity expected-arity)
           (raise-syntax-error
            #f

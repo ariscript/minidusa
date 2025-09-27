@@ -2,12 +2,17 @@
 
 (require "main.rkt"
          syntax/macro-testing
-         rackunit)
+         rackunit
+         racket/stream
+         racket/set)
 
 (provide (all-from-out "main.rkt"
                        rackunit
-                       syntax/macro-testing)
-         smush-syntax/program)
+                       syntax/macro-testing
+                       racket/stream
+                       racket/set)
+         smush-syntax/program
+         check-all-solutions)
 
 ;; replaces all of the relation syntax objects in the program with symbols
 ;; by walking the program AST and syntax->datum on relation names
@@ -22,10 +27,7 @@
 (define (smush-syntax/rule-frag rf)
   (struct-copy rule-frag rf [name (syntax->datum (rule-frag-name rf))]))
 
-(define (smush-syntax/fact f)
-  (define rel (fact-rel f))
-  ;; can't struct-copy fact because it uses a smart constructor
-  ;; and doesn't export the actual name itself
-  (make-fact (if (procedure? rel) rel (syntax->datum rel))
-             (fact-terms f)
-             (fact-value f)))
+;; check-all-solutions: Program [ListOf [SetOf Fact]] -> Void
+(define-syntax-rule (check-all-solutions prog expected)
+  (check-equal? (map soln->factset (stream->list (all prog)))
+                expected))

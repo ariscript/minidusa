@@ -29,6 +29,7 @@
 ;; A Relation is one of
 ;; - Syntax, representing (hygenic) relation names, or
 ;; - Procedure, representing an imported relation
+;; - Symbol, but only to allow users to interact with relations in facts
 
 ;; A Fact is a (fact Relation [ListOf Datum] [Option Datum]).
 ;; It represents a known fact (either given or deduced) in the database.
@@ -40,8 +41,12 @@
 (struct fact [rel terms value] #:transparent
   #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     (and (or (equal? (fact-rel self) (fact-rel other))  ; phys equal for procs
-              (bound-identifier=? (fact-rel self) (fact-rel other)))
+     ;; this first check is a hack, so that symbol comparison works in tests...
+     ;; TODO: fix this by implementing a more proper equality check
+     (and (or (eq? (fact-rel self) (fact-rel other))  ; for proc + symbols
+              (and (syntax? (fact-rel self))
+                   (syntax? (fact-rel other))
+                   (bound-identifier=? (fact-rel self) (fact-rel other))))
           (rec (fact-terms self) (fact-terms other))
           (rec (fact-value self) (fact-value other))))
    (define (hash-proc self rec)
@@ -55,6 +60,21 @@
 
 (define (make-fact rel terms [value NONE])
   (fact rel terms value))
+
+;; fact-stx-original?: Fact -> Bool
+;; determines whether the fact's relation is syntax coming from a macro or not
+(define (fact-stx-original? f)
+  ;; strip off layer of indirection from syntax-spec
+  (define from (and (syntax? (fact-rel f))
+                    (syntax-property (fact-rel f) 'compiled-from)))
+  (and from (syntax-original? from)))
+
+;; smush-syntax/fact: Fact -> Fact
+;; replaces the syntax object in a fact with its underlying symbol
+;; (maybe the "signature" could be more descriptive, but this is clear imo)
+(define (smush-syntax/fact f)
+  (define rel (fact-rel f))
+  (struct-copy fact f [rel (if (procedure? rel) rel (syntax->datum rel))]))
 
 ;; A Variable is a (variable Symbol)
 (struct variable [name] #:transparent)
@@ -99,13 +119,13 @@
 ;; a Fact is "closed by default", hence the inconsistent naming convention
 
 (struct rule-frag [name terms choices is??] #:transparent
- #:methods gen:equal+hash
+  #:methods gen:equal+hash
   [(define (equal-proc self other rec)
-     ;; this first check is a hack, so that symbol comparison works in tests...
-     ;; TODO: fix this by implementing a more proper equality check
-     (and (or (equal? (rule-frag-name self) (rule-frag-name other))
-              (bound-identifier=? (rule-frag-name self)
-                                  (rule-frag-name other)))
+     (and (or (eq? (rule-frag-name self) (rule-frag-name other))
+              (and (syntax? (rule-frag-name self))
+                   (syntax? (rule-frag-name other))
+                   (bound-identifier=? (rule-frag-name self)
+                                       (rule-frag-name other))))
           (rec (rule-frag-terms self) (rule-frag-terms other))
           (rec (rule-frag-choices self) (rule-frag-choices other))
           (rec (rule-frag-is?? self) (rule-frag-is?? other))))

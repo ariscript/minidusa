@@ -3,7 +3,8 @@
 (require racket/set)
 
 (provide (except-out (all-defined-out)
-                     (struct-out database)))
+                     (struct-out database)
+                     db-only-original))
 
 (require "data.rkt")
 
@@ -119,3 +120,21 @@
              (fact-consistent? fact))
            (for/and ([c (database-constraints db)])
              (constraint-valid? c to-add)))))
+
+;; db-only-original: Database -> Database
+;; filters out the facts with relation syntax objects that aren't original
+(define (db-only-original db)
+  (db-filter fact-stx-original? db))
+
+;; db->factset: Database -> [SetOf Fact]
+;; filters facts with unoriginal syntax then smushes remaining facts into a set
+(define (db->factset db)
+  (for/set ([fact (database-facts (db-only-original db))])
+    (smush-syntax/fact fact)))
+
+;; db->factset: Database -> Database
+;; like db->factset, but maintains the constraints as well
+;; mostly for backwards compatibility
+;; TODO: replace this, if get and set become better
+(define (filter-and-smush db)
+  (struct-copy database db [facts (db->factset db)]))

@@ -1,7 +1,9 @@
 #lang racket
 
 (module+ test
-  (require "../testing.rkt")
+  (require "../testing.rkt"
+           syntax-spec-v3
+           (for-syntax syntax/parse))
 
   (check-all-solutions
    (logic (foo 1))
@@ -257,4 +259,65 @@
    (set (fact 'foo '(1))
         (fact 'foo '(2))
         (fact 'bar '(2))))
+
+  (define-dsl-syntax forbid logic-macro
+    (lambda (stx)
+      (syntax-parse stx
+        [(_  p ...+)
+         #'(decls ((name) is {#t})
+                  (((name) is {#f}) :- p ...))])))
+
+  (define-dsl-syntax demand logic-macro
+    (lambda (stx)
+      (syntax-parse stx
+        [(_ p ...+)
+         #'(decls ((d) is? {#f})
+                  (((d) is {#t}) :- p ...)
+                  (forbid ((d) is #f)))])))
+
+  (define (adjacent x1 y1 x2 y2)
+    (define nonnegative? (compose not negative?))
+    (and (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
+             (and (= (abs (- y1 y2)) 1) (= x1 x2)))))
+
+  (stream-first
+   (solve
+    (logic #:import (add1 < adjacent cons) #:extern (images)
+      ((grid 0 0) is {'city 'plain 'mountain 'forest 'ocean})
+      (((grid n sm) is {'city 'plain 'mountain 'forest 'ocean})
+       :-
+       ((grid n m) is _)
+       ((add1 m) is sm)
+       ((< n 5) is #t)
+       ((< m 4) is #t))
+      (((grid sn m) is {'city 'plain 'mountain 'forest 'ocean})
+       :-
+       ((grid n m) is _)
+       ((add1 n) is sn)
+       ((< n 4) is #t)
+       ((< n 5) is #t))
+    
+      ; no two cities should be directly adjacent
+      (forbid ((grid x1 y1) is 'city)
+              ((grid x2 y2) is 'city)
+              ((adjacent x1 x2 y1 y2) is #t))
+      (demand ((grid x y) is 'city)) ; require at least one city
+
+      ; a tile is connected if there's a path to the ocean
+      ; all cities should be connected to the ocean
+      (((connected n m) is {#t}) :- ((grid n m) is 'ocean))
+      (((connected n m) is? {#t}) :-
+                                  ((grid x y) is _a)
+                                  ((grid n m) is _b)
+                                  ((adjacent n m x y) is #t)
+                                  ((connected x y) is #t))
+      (((connected n m) is {#f}) :- ((grid n m) is 'mountain))
+      (demand ((grid x y) is 'city) ((connected x y) is #t))
+
+      (((spawn) is? {x}) :- ((grid n m) is 'city) ((cons n m) is x))
+
+      ; set up map from grid coordinates to image
+      (((image n m) is {img}) :-
+                              ((grid n m) is biome)
+                              ((images biome) is img)))))
   )

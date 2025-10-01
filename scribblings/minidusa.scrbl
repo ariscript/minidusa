@@ -129,7 +129,7 @@ characters and backstories for creative purposes.
           
           (define story-program
             (logic #:import ([!= (compose not equal?)]
-                             string-append)
+                             [string-append string-append])
               ((character 'hero) is {"Zack" "Ari" "Ben" "Michael"})
               ((character 'sidekick) is {"Zack" "Ari" "Ben" "Michael"})
               ((character 'villain) is {"Zack" "Ari" "Ben" "Michael"})
@@ -286,8 +286,7 @@ variables) and potentially bind the result. The return value is checked for
 equality with the expected value, or bound as a variable.
 
 @racketblock[
- (code:comment "note the shorthand for not renaming an import")
- (logic #:import (add1)
+ (logic #:import ([add1 add1])
    (foo 1)
    ((bar) :- (foo X) ((add1 X) is 2)))]
 

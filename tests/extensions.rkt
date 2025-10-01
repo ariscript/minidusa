@@ -137,4 +137,23 @@
      ;; this will again test arity, and that foo 2 is not deduced
      (has-foo-1)
      ((foo 2) :- (foo 1)))
-   (list (set (fact 'bar '())))))
+   (list (set (fact 'bar '()))))
+
+  (define-dsl-syntax nested-import logic-macro
+    (lambda (stx)
+      (define add1 sub1)
+      (syntax-parse stx
+        [(_ name)
+         #`(decls #:import ([s #,add1])
+                  (foo 1)
+                  ((name) :- (foo X) ((s X) is 2)))])))
+
+  (check-all-solutions
+   (logic #:import ([s sub1])
+     (nested-import foo)
+     (bar 1)
+     ((baz) :- (bar X) ((s X) is 0)))
+   (list (set (fact 'foo '())
+              (fact 'bar '(1))
+              (fact 'baz '()))))
+  )

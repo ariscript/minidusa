@@ -11,7 +11,7 @@
          syntax/parse
          syntax/id-table)
 
-(define RESERVED-NAMES '(is is? :- decls rkt))
+(define RESERVED-NAMES '(is is? :- decls import rkt))
 
 ;; EXAMPLE EXPANSIONS!
 #;(logic
@@ -78,15 +78,18 @@
 ;; ImportsSyntax IdsSyntax LogicSyntax -> RacketSyntax
 (define (compile-logic imports-stx externs-stx logic-stx)
   (define arities (local-symbol-table))
+
   (define imports
     (apply immutable-symbol-set
            ; grabs all of the ([rel-var _] ...)s
            (map (lambda (stx-pair) (first (syntax->list stx-pair)))
-                (syntax->list imports-stx))))
+                (append (syntax->list imports-stx)
+                        (syntax->list (gather-nested-imports logic-stx))))))
+  
   (define externs (apply immutable-symbol-set (syntax->list externs-stx)))
   (define state (compiler-state arities imports externs))
 
-  (define body
+  (define body 
     (let ([compile-decl ((curry compile-decl) state)]
           [logic-stx (flatten-decls logic-stx)])
       (syntax-parse logic-stx
@@ -105,17 +108,27 @@
 
   (syntax-parse imports-stx
     [[[rel-var rhs] ...]
-     #`(let ([rel-var rhs] ...) #,body)]))
+     #`(let ([rel-var rhs] ... #,@(gather-nested-imports logic-stx)) #,body)]))
 
 ;; flatten-decls : LogicSyntax -> LogicSyntax
 ;; flattens all `decls` blocks into a single list of decls at the top level
 (define (flatten-decls logic-stx)
   (syntax-parse logic-stx
-    #:datum-literals (decls)
+    #:datum-literals (#%decls #%import)
     [() #'()]
-    [((decls inner ...) rest ...)
+    [((#%decls (#%import _ ...) inner ...) rest ...)
      (flatten-decls #'(inner ... rest ...))]
     [(d rest ...) #`(d #,@(flatten-decls #'(rest ...)))]))
+
+;; gather-imports : LogicSyntax -> ImportsSyntax
+;; collects all of the other imports in any inner decls and adds them
+(define (gather-nested-imports logic-stx)
+  (syntax-parse logic-stx
+    #:datum-literals (#%decls #%import)
+    [() #'()]
+    [((#%decls (#%import i ...) inner ...) rest ...)
+     #`(i ... #,@(gather-nested-imports #'(inner ... rest ...)))]
+    [(d rest ...) (gather-nested-imports #'(rest ...))]))
 
 ;; DeclSyntax -> Bool
 ;; determines if the given declaration is a choice-based rule

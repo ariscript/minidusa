@@ -18,34 +18,32 @@
  (binding-class rel-var)
  (extension-class logic-macro #:binding-space minidusa)
 
- ;; (logic/importing <imps> (<id> ...) <decl> ...)
+ ;; (logic/importing (<imp> ...) (<id> ...) <decl> ...)
  (host-interface/expression
-  (logic/importing i:imps (ex:rel-var ...) d:decl ...)
-  #:binding (nest i (scope (bind ex) ... (import d) ...))
-  (compile-logic #'i #'(ex ...) #'(d ...)))
+  (logic/importing ([x:rel-var e:racket-expr] ...) (ex:rel-var ...) d:decl ...)
+  #:binding (scope (bind x) ... (bind ex) ... (import d) ...)
+  (compile-logic #'([x e] ...) #'(ex ...) #'(d ...)))
 
- ;; <imps> ::= (<imp> ...)
- ;; <imp>  ::= x:racket-var
- ;;          | [x:id e:racket-expr]
- (nonterminal/nesting imps (nested)
-   ([x:rel-var e:racket-expr] ...)
-   #:binding [e ... (scope (bind x) ... nested)]
-
-   ;; If we have a racket-var, that is shorthand for binding it to
-   ;; a rel-var with the same name, so we expand accordingly.
-   ;; This case comes after the core case so that it only matches
-   ;; when there are shorthands that need to expand.
-   (~> ((~or* (~and x:id (~bind [e #'x])) [x:id e:expr]) ...)
-       #'([x e] ...)))
-
+ ;; TODO: better error messages for ill-formed imports
+ ;; removing the import punning sugar resulted in an error reporting regression
+ ;; TODO: logic/importing also bleeds through for bad errors
+ 
  ;; <decl> ::= <conclusion>                       ; fact
  ;;          | (<conclusion> :- <premise> ...+)   ; rule
  ;;          | (decls <decl> ...)                 ; nested (for macros)
  (nonterminal/exporting decl
    #:allow-extension logic-macro
 
-   ((~datum decls) d:decl ...)
-   #:binding [(re-export d) ...]
+   (~> ((~datum decls) (~or* (~seq #:import (imp ...))
+                             (~seq))
+                       d ...)
+       #:with (imps ...) (or (attribute imp) #'())
+       #'(#%decls (#%import imps ...) d ...))
+   
+   ((~datum #%decls)
+    ((~datum #%import) [x:rel-var e:racket-expr] ...)
+    d:decl ...)
+   #:binding [(export x) ... (re-export d) ...]
    
    (~> (~and d
              ;; drill down to find the relation name, then extract for binding

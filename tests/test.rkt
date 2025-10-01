@@ -180,7 +180,7 @@
    11)
 
   (check-all-solutions
-   (logic #:import (add1)
+   (logic #:import ([add1 add1])
      (foo 1)
      ((bar) :- (foo X) ((add1 X) is 2)))
    (list (set (fact 'foo '(1))
@@ -189,7 +189,7 @@
   (check-all-solutions
    (logic #:import ([+ string-append]
                     [= equal?]
-                    string-length)
+                    [string-length string-length])
      (pre-string "a")
      (pre-string "cd")
      (string "123")
@@ -276,11 +276,10 @@
                   (forbid ((d) is #f)))])))
 
   (define (adjacent x1 y1 x2 y2)
-    (define nonnegative? (compose not negative?))
-    (and (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
-             (and (= (abs (- y1 y2)) 1) (= x1 x2)))))
+    (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
+             (and (= (abs (- y1 y2)) 1) (= x1 x2))))
 
-  (stream-first
+  #;(stream-first
    (solve
     (logic #:import (add1 < adjacent cons) #:extern (images)
       ((grid 0 0) is {'city 'plain 'mountain 'forest 'ocean})

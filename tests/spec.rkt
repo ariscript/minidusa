@@ -170,7 +170,7 @@
     '()))
   
   (check-equal/unhygenic?
-   (logic #:import [add1]
+   (logic #:import ([add1 add1])
      ((foo) :- ((add1 0) is 1)))
    (program
     (list (rule (rule-frag 'foo '() '() #f)
@@ -192,19 +192,19 @@
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1])
                                    (add1 0)))))
 
   (check-exn
    #rx"imported relations cannot appear in conclusions"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1])
                                    ((add1 0) is {1})))))
 
   (check-exn
    #rx"imported relations must be used with 'is'"
    (lambda ()
-     (convert-compile-time-error (logic #:import [add1]
+     (convert-compile-time-error (logic #:import ([add1 add1])
                                    ((foo) :- (add1 0))))))
 
   (check-exn
@@ -216,7 +216,7 @@
    #rx"cannot run imported relations backwards"
    (lambda ()
      (convert-compile-time-error
-      (logic #:import [add1]
+      (logic #:import ([add1 add1])
         ((foo X) :- ((add1 X) is 2))))))
 
   ;; is? rules

@@ -1,6 +1,8 @@
 #lang racket
 
-(require "../testing.rkt" syntax-spec-v3
+(require "../main.rkt"
+         syntax-spec-v3
+         gregor
          (for-syntax syntax/parse racket/list))
 
 (define-dsl-syntax forbid logic-macro
@@ -22,33 +24,6 @@
     (forbid (edge X Y) ((color X) is C)
                        ((color Y) is C))))
 
-;; TODO: make this work
-#;(check-all-solutions
-   reachability
-   (list
-    (set
-     (fact 'reachable '(d d) NONE)
-     (fact 'edge '(c b) NONE)
-     (fact 'reachable '(c b) NONE)
-     (fact 'edge '(c a) NONE)
-     (fact 'reachable '(c a) NONE)
-     (fact 'edge '(a c) NONE)
-     (fact 'reachable '(a c) NONE)
-     (fact 'reachable '(c c) NONE)
-     (fact 'edge '(d e) NONE)
-     (fact 'reachable '(d e) NONE)
-     (fact 'reachable '(b b) NONE)
-     (fact 'reachable '(e e) NONE)
-     (fact 'reachable '(a a) NONE)
-     (fact 'edge '(b a) NONE)
-     (fact 'reachable '(b a) NONE)
-     (fact 'edge '(e d) NONE)
-     (fact 'reachable '(e d) NONE)
-     (fact 'edge '(a b) NONE)
-     (fact 'reachable '(a b) NONE)
-     (fact 'edge '(b c) NONE)
-     (fact 'reachable '(b c) NONE))))
-
 (define-dsl-syntax undirected-graph logic-macro
   (syntax-parser 
     [(_ edge-rel (node [neighbor ...]) ...)
@@ -65,9 +40,9 @@
 (define coloring
   (logic
     (undirected-graph edge
-     ['a ('b 'c)]
-     ['b ('c)]
-     ['d ('e)])
+      ['a ('b 'c)]
+      ['b ('c)]
+      ['d ('e)])
     (((color X) is {'red 'green 'blue}) :- (edge X _))
     (forbid ((color X) is C)
             ((color Y) is C)
@@ -236,3 +211,29 @@
     (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
+
+(struct participant [name DOB])
+
+;; fetch-participants : -> [SetOf Participant]
+(define (fetch-participants)
+  (list (participant "Joe" "01/28/1995")
+        (participant "Zack" "07/26/2004")
+        (participant "Ryan" "06/20/2004")
+        (participant "Ari" "some date")))
+
+;; participants->factset : [SetOf Participant] -> [SetOf Fact]
+(define (participants->factset ps name)
+  (for/set ([p ps])
+    (fact name (list (participant-name p)) (participant-DOB p))))
+
+;; same-year? : DateString DateString -> Bool
+(define (same-year? dob1 dob2)
+  (define (extract-year dob)
+    (->year (parse-date dob "M/d/yyyy")))
+  (equal? (extract-year dob1) (extract-year dob2)))
+
+(define dob-ex
+  (logic #:import ([year=? same-year?]) #:extern (person)
+    ((edge X Y) :- ((person X) is DOB1)
+                   ((person Y) is DOB2)
+                   ((year=? DOB1 DOB2) is #t))))

@@ -140,6 +140,31 @@
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
+(define (adjacent? x1 y1 x2 y2)
+  (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
+      (and (= (abs (- y1 y2)) 1) (= x1 x2))))
+
+(define world-using-adjacent
+  (logic #:import ([s add1] [adjacent adjacent?])
+    (xc 0) (xc 1) (xc 2) (xc 3) (xc 4)
+    (yc 0) (yc 1) (yc 2) (yc 3) (yc 4) (yc 5)
+    ((coordinates X Y) :- (xc X) (yc Y))
+    
+    (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
+    (forbid ((grid X1 Y1) is 'city)
+            ((grid X2 Y2) is 'city)
+            ((adjacent X1 Y1 X2 Y2) is #t))
+    (demand ((grid X Y) is 'city))
+
+    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :-
+     ((grid X Y) is _)
+     ((can-reach-water N M) is #t)
+     ((adjacent X Y N M) is #t))
+    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+
+    (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
+
 (define-dsl-syntax grid-list logic-macro
   (lambda (stx)
     (syntax-parse stx
@@ -156,23 +181,20 @@
            ((coordinates X Y) :- (xc X) (yc Y)))])))
 
 (define world-list
-  (logic #:import ([s add1])
+  (logic #:import ([s add1] [adjacent adjacent?])
     (grid-list 5 6 coordinates)
-    ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
-    ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
-    ((adjacent X1 Y1 X2 Y2) :- (adjacent X2 Y2 X1 Y1))
 
     (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
     (forbid ((grid X1 Y1) is 'city)
             ((grid X2 Y2) is 'city)
-            (adjacent X1 Y1 X2 Y2))
+            ((adjacent X1 Y1 X2 Y2) is #t))
     (demand ((grid X Y) is 'city))
 
     (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
     (((can-reach-water X Y) is? {#t}) :-
      ((grid X Y) is _)
      ((can-reach-water N M) is #t)
-     (adjacent X Y N M))
+     ((adjacent X Y N M) is #t))
     (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
@@ -197,35 +219,8 @@
             ((s N) is SN)))])))
 
 (define world-gen
-  (logic #:import ([s add1])
-    (grid-s 5 6 coordinates)
-    ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
-    ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
-    ((adjacent X1 Y1 X2 Y2) :- (adjacent X2 Y2 X1 Y1))
-
-    (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
-    (forbid ((grid X1 Y1) is 'city)
-            ((grid X2 Y2) is 'city)
-            (adjacent X1 Y1 X2 Y2))
-    (demand ((grid X Y) is 'city))
-
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     ((can-reach-water N M) is #t)
-     (adjacent X Y N M))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
-
-    (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
-
-(define (adjacent? x1 y1 x2 y2)
-  (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
-      (and (= (abs (- y1 y2)) 1) (= x1 x2))))
-
-(define world-using-adjacent
   (logic #:import ([s add1] [adjacent adjacent?])
     (grid-s 5 6 coordinates)
-
     (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
     (forbid ((grid X1 Y1) is 'city)
             ((grid X2 Y2) is 'city)

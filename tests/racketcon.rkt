@@ -92,13 +92,14 @@
 
 (define world-raw
   (logic
-    (coord 0) (coord 1) (coord 2) (coord 3) (coord 4)
-    (adj 0 1) (adj 1 2) (adj 2 3) (adj 3 4)
+    (xc 0) (xc 1) (xc 2) (xc 3) (xc 4)
+    (yc 0) (yc 1) (yc 2) (yc 3) (yc 4) (yc 5)
+    (adj 0 1) (adj 1 2) (adj 2 3) (adj 3 4) (adj 4 5)
     ((adj A B) :- (adj B A))
     
-    ((coordinates X Y) :- (coord X) (coord Y))
-    ((adjacent X1 Y1 X1 Y2) :- (coord X1) (adj Y1 Y2))
-    ((adjacent X1 Y1 X2 Y1) :- (adj X1 X2) (coord Y1))
+    ((coordinates X Y) :- (xc X) (yc Y))
+    ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (adj Y1 Y2))
+    ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (adj X1 X2))
 
     (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
     (forbid ((grid X1 Y1) is 'city)
@@ -117,8 +118,9 @@
 
 (define world-importing
   (logic #:import ([s add1])
-    (coord 0) (coord 1) (coord 2) (coord 3) (coord 4)
-    ((coordinates X Y) :- (coord X) (coord Y))
+    (xc 0) (xc 1) (xc 2) (xc 3) (xc 4)
+    (yc 0) (yc 1) (yc 2) (yc 3) (yc 4) (yc 5)
+    ((coordinates X Y) :- (xc X) (yc Y))
     ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
     ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
     ((adjacent X1 Y1 X2 Y2) :- (adjacent X2 Y2 X1 Y1))
@@ -138,20 +140,24 @@
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
-(define-dsl-syntax square-list logic-macro
+(define-dsl-syntax grid-list logic-macro
   (lambda (stx)
     (syntax-parse stx
-      [(_ n coordinates)
-       (define size (syntax->datum #'n))
-       (define/syntax-parse ((coords ...) ...)
-         (for/list ([x (range size)])
-           (for/list ([y (range size)])
-             #`(coordinates #,x #,y))))
-       #'(decls coords ... ...)])))
+      [(_ n m coordinates)
+       (define/syntax-parse (xcs ...)
+         (for/list ([x (range (syntax->datum #'n))])
+           #`(xc #,x)))
+       (define/syntax-parse (ycs ...)
+         (for/list ([x (range (syntax->datum #'n))])
+           #`(yc #,x)))
+       #'(decls
+           xcs ...
+           ycs ...
+           ((coordinates X Y) :- (xc X) (yc Y)))])))
 
 (define world-list
   (logic #:import ([s add1])
-    (square-list 5 coordinates)
+    (grid-list 5 6 coordinates)
     ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
     ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
     ((adjacent X1 Y1 X2 Y2) :- (adjacent X2 Y2 X1 Y1))
@@ -171,27 +177,28 @@
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
-(define-dsl-syntax square-gen logic-macro
+(define-dsl-syntax grid-s logic-macro
   (lambda (stx)
     (syntax-parse stx
-      [(_ n coordinates)
-       (define size (syntax->datum #'n))
+      [(_ n m coordinates)
+       (define width (syntax->datum #'n))
+       (define length (syntax->datum #'m))
        #`(decls #:import ([s add1] [less? <])
            (coordinates 0 0)
            ((coordinates N SM) :-
             (coordinates N M)
-            ((less? N #,size) is #t)
-            ((less? M #,(sub1 size)) is #t)
+            ((less? N #,width) is #t)
+            ((less? M #,(sub1 length)) is #t)
             ((s M) is SM))
            ((coordinates SN M) :-
             (coordinates N M)
-            ((less? N #,(sub1 size)) is #t)
-            ((less? M #,size) is #t)
+            ((less? N #,(sub1 width)) is #t)
+            ((less? M #,length) is #t)
             ((s N) is SN)))])))
 
 (define world-gen
   (logic #:import ([s add1])
-    (square-gen 5 coordinates)
+    (grid-s 5 6 coordinates)
     ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
     ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
     ((adjacent X1 Y1 X2 Y2) :- (adjacent X2 Y2 X1 Y1))
@@ -217,7 +224,7 @@
 
 (define world-using-adjacent
   (logic #:import ([s add1] [adjacent adjacent?])
-    (square-gen 5 coordinates)
+    (grid-s 5 6 coordinates)
 
     (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
     (forbid ((grid X1 Y1) is 'city)

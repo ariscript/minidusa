@@ -8,8 +8,9 @@
 (define-dsl-syntax forbid logic-macro
   (syntax-parser
     [(_ p ...+)
-     #'(decls ((ok) is {#t})
-              (((ok) is {#f}) :- p ...))]))
+     #'(decls
+         ((ok) is {#t})
+         (((ok) is {#f}) :- p ...))]))
 
 (define reachability
   (logic
@@ -25,7 +26,7 @@
                        ((color Y) is C))))
 
 (define-dsl-syntax undirected-graph logic-macro
-  (syntax-parser 
+  (syntax-parser
     [(_ edge-rel (node [neighbor ...]) ...)
      (define nodes (syntax-e #'(node ...)))
      (define neighbors (syntax-e #'((neighbor ...) ...)))
@@ -34,7 +35,8 @@
                   [edges neighbors])
          (for/list ([edge (syntax-e edges)])
            #`(edge-rel #,node #,edge))))
-     #'(decls stxes ... ...
+     #'(decls
+         stxes ... ...
          ((edge-rel X Y) :- (edge-rel Y X)))]))
 
 (define coloring
@@ -47,11 +49,11 @@
     (forbid ((color X) is C)
             ((color Y) is C)
             (edge X Y))))
-
 #;(undirected-graph edge
   ['a ('b 'c 'd)]
   ['c ('b 'd 'e)]
   ['e ('b 'f)])
+
 
 #;(decls
  (edge 'a 'b) (edge 'a 'c) (edge 'a 'd)
@@ -62,9 +64,10 @@
 (define-dsl-syntax demand logic-macro
   (syntax-parser
     [(_ p ...+)
-     #'(decls ((ok) is? {#f})
-              (((ok) is {#t}) :- p ...)
-              (forbid ((ok) is #f)))]))
+     #'(decls
+         ((ok) is? {#f})
+         (((ok) is {#t}) :- p ...)
+         (forbid ((ok) is #f)))]))
 
 #;(define stop-and-go
   (logic #:import ([s add1])

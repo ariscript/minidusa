@@ -219,12 +219,12 @@
   (list (participant "Joe" "01/28/1995")
         (participant "Zack" "07/26/2004")
         (participant "Ryan" "06/20/2004")
-        (participant "Ari" "some date")))
+        (participant "Ari" "01/01/1995")))
 
 ;; participants->factset : [SetOf Participant] -> [SetOf Fact]
-(define (participants->factset ps name)
+(define (participants->factset ps)
   (for/set ([p ps])
-    (fact name (list (participant-name p)) (participant-DOB p))))
+    (fact 'person (list (participant-name p)) (participant-DOB p))))
 
 ;; same-year? : DateString DateString -> Bool
 (define (same-year? dob1 dob2)
@@ -237,3 +237,8 @@
     ((edge X Y) :- ((person X) is DOB1)
                    ((person Y) is DOB2)
                    ((year=? DOB1 DOB2) is #t))))
+
+#;(soln->factset
+ (stream-first
+  (solve #:facts (participants->factset (fetch-participants))
+    dob-ex)))

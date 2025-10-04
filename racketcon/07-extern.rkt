@@ -7,10 +7,10 @@
 
 ;; fetch-participants : -> [SetOf Participant]
 (define (fetch-participants)
-  (list (participant "Joe" "01/28/1995")
+  (list (participant "Dr. Racket" "01/28/1995")
         (participant "Zack" "07/26/2004")
         (participant "Ryan" "06/20/2004")
-        (participant "Ari" "01/01/1995")))
+        (participant "Ari" "01/16/2005")))
 
 ;; participants->factset : [SetOf Participant] Symbol -> [SetOf Fact]
 (define (participants->factset ps name)

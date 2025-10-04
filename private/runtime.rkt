@@ -3,6 +3,7 @@
 (provide (rename-out [solve-opt solve])
          has
          get
+         all-facts-for
          soln->factset)
 
 (require racket/stream
@@ -440,6 +441,12 @@
   ;; TODO: maybe raise an error for unexpected arguments / etc?
   ;; TODO: this raises a bad error currently when the fact is not found
   (fact-value (db-first (db-filter (lambda (f) (same-attr f rel terms)) db))))
+
+(define (all-facts-for sol rel)
+  (define db (filter-and-smush (solution-database sol)))
+  ;; TODO: maybe raise an error for unexpected arguments / etc?
+  ;; TODO: this raises a bad error currently when the fact is not found
+  (db->factset (db-filter (lambda (f) (eq? (fact-rel f) rel)) db)))
 
 ;; lookup: Solution Symbol Datum ... -> [ListOf [ListOf Datum]]
 ;; Query the solution for a proposition of the form provided. Providing

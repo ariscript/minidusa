@@ -4,11 +4,11 @@
          (for-syntax syntax/parse racket/list))
 
 (define-dsl-syntax forbid logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ p ...+)
-       #'(decls ((x) is {#t})
-           (((x) is {#f}) :- p ...))])))
+  (syntax-parser
+    [(_ p ...+)
+     #'(decls ((ok) is {#t})
+              (((ok) is {#f}) :- p ...))]))
+
 (define reachability
   (logic
     (edge 'a 'b) (edge 'b 'c) (edge 'd 'e)
@@ -22,6 +22,7 @@
     (forbid (edge X Y) ((color X) is C)
                        ((color Y) is C))))
 
+;; TODO: make this work
 #;(check-all-solutions
    reachability
    (list
@@ -49,41 +50,48 @@
      (fact 'reachable '(b c) NONE))))
 
 (define-dsl-syntax undirected-graph logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ edge-rel node-rel (node [neighbor ...]) ...)
-       (define nodes (syntax-e #'(node ...)))
-       (define neighbors (syntax-e #'((neighbor ...) ...)))
-       (define/syntax-parse ((stxes ...) ...)
-         (for/list ([node nodes]
-                    [edges neighbors])
-           (for/list ([edge (syntax-e edges)])
-             #`(edge-rel #,node #,edge))))
-       #'(decls stxes ... ...
-           ((edge-rel X Y) :- (edge-rel Y X))
-           ((node-rel X) :- (edge-rel X _)))])))
+  (syntax-parser 
+    [(_ edge-rel (node [neighbor ...]) ...)
+     (define nodes (syntax-e #'(node ...)))
+     (define neighbors (syntax-e #'((neighbor ...) ...)))
+     (define/syntax-parse ((stxes ...) ...)
+       (for/list ([node nodes]
+                  [edges neighbors])
+         (for/list ([edge (syntax-e edges)])
+           #`(edge-rel #,node #,edge))))
+     #'(decls stxes ... ...
+         ((edge-rel X Y) :- (edge-rel Y X)))]))
 
 (define coloring
   (logic
-    (undirected-graph
-     edge node
+    (undirected-graph edge
      ['a ('b 'c)]
      ['b ('c)]
      ['d ('e)])
-    (((color X) is {'red 'green 'blue}) :- (node X))
+    (((color X) is {'red 'green 'blue}) :- (edge X _))
     (forbid ((color X) is C)
             ((color Y) is C)
             (edge X Y))))
 
-(define-dsl-syntax demand logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ p ...+)
-       #'(decls ((x) is? {#f})
-           (((x) is {#t}) :- p ...)
-           (forbid ((x) is #f)))])))
+#;(undirected-graph edge
+  ['a ('b 'c 'd)]
+  ['c ('b 'd 'e)]
+  ['e ('b 'f)])
 
-(define stop-and-go
+#;(decls
+ (edge 'a 'b) (edge 'a 'c) (edge 'a 'd)
+ (edge 'c 'b) (edge 'c 'd) (edge 'c 'e)
+ (edge 'e 'b) (edge 'b 'f)
+ (edge X Y) :- (edge Y X))
+
+(define-dsl-syntax demand logic-macro
+  (syntax-parser
+    [(_ p ...+)
+     #'(decls ((ok) is? {#f})
+              (((ok) is {#t}) :- p ...)
+              (forbid ((ok) is #f)))]))
+
+#;(define stop-and-go
   (logic #:import ([s add1])
     ((run 0) is {'stop 'go})
     (((run M) is {'stop 'go})
@@ -107,12 +115,11 @@
             (adjacent X1 Y1 X2 Y2))
     (demand ((grid X Y) is 'city))
 
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     (adjacent X Y N M)
-     ((can-reach-water N M) is #t))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+    (((can-reach-water X Y) is {#t})  :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :- ((grid X Y) is _)
+                                         (adjacent X Y N M)
+                                         ((can-reach-water N M) is #t))
+    (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
@@ -120,6 +127,7 @@
   (logic #:import ([s add1])
     (xc 0) (xc 1) (xc 2) (xc 3) (xc 4)
     (yc 0) (yc 1) (yc 2) (yc 3) (yc 4) (yc 5)
+    
     ((coordinates X Y) :- (xc X) (yc Y))
     ((adjacent X1 Y1 X1 Y2) :- (coordinates X1 Y1) (coordinates X1 Y2) ((s Y1) is Y2))
     ((adjacent X1 Y1 X2 Y1) :- (coordinates X1 Y1) (coordinates X2 Y1) ((s X1) is X2))
@@ -131,12 +139,11 @@
             (adjacent X1 Y1 X2 Y2))
     (demand ((grid X Y) is 'city))
 
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     ((can-reach-water N M) is #t)
-     (adjacent X Y N M))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+    (((can-reach-water X Y) is {#t})  :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :- ((grid X Y) is _)
+                                         ((can-reach-water N M) is #t)
+                                         (adjacent X Y N M))
+    (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
@@ -156,29 +163,27 @@
             ((adjacent X1 Y1 X2 Y2) is #t))
     (demand ((grid X Y) is 'city))
 
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     ((can-reach-water N M) is #t)
-     ((adjacent X Y N M) is #t))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+    (((can-reach-water X Y) is {#t})  :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :- ((grid X Y) is _)
+                                         ((can-reach-water N M) is #t)
+                                         ((adjacent X Y N M) is #t))
+    (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
 (define-dsl-syntax grid-list logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ n m coordinates)
-       (define/syntax-parse (xcs ...)
-         (for/list ([x (range (syntax->datum #'n))])
-           #`(xc #,x)))
-       (define/syntax-parse (ycs ...)
-         (for/list ([x (range (syntax->datum #'n))])
-           #`(yc #,x)))
-       #'(decls
-           xcs ...
-           ycs ...
-           ((coordinates X Y) :- (xc X) (yc Y)))])))
+  (syntax-parser
+    [(_ n m coordinates)
+     (define/syntax-parse (xcs ...)
+       (for/list ([x (range (syntax->datum #'n))])
+         #`(xc #,x)))
+     (define/syntax-parse (ycs ...)
+       (for/list ([x (range (syntax->datum #'n))])
+         #`(yc #,x)))
+     #'(decls
+         xcs ...
+         ycs ...
+         ((coordinates X Y) :- (xc X) (yc Y)))]))
 
 (define world-list
   (logic #:import ([s add1] [adjacent adjacent?])
@@ -190,48 +195,44 @@
             ((adjacent X1 Y1 X2 Y2) is #t))
     (demand ((grid X Y) is 'city))
 
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     ((can-reach-water N M) is #t)
-     ((adjacent X Y N M) is #t))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+    (((can-reach-water X Y) is {#t})  :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :- ((grid X Y) is _)
+                                         ((can-reach-water N M) is #t)
+                                         ((adjacent X Y N M) is #t))
+    (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))
 
 (define-dsl-syntax grid-s logic-macro
-  (lambda (stx)
-    (syntax-parse stx
-      [(_ n m coordinates)
-       (define width (syntax->datum #'n))
-       (define length (syntax->datum #'m))
-       #`(decls #:import ([s add1] [less? <])
-           (coordinates 0 0)
-           ((coordinates N SM) :-
-            (coordinates N M)
-            ((less? N #,width) is #t)
-            ((less? M #,(sub1 length)) is #t)
-            ((s M) is SM))
-           ((coordinates SN M) :-
-            (coordinates N M)
-            ((less? N #,(sub1 width)) is #t)
-            ((less? M #,length) is #t)
-            ((s N) is SN)))])))
+  (syntax-parser
+    [(_ n m coordinates)
+     (define width (syntax->datum #'n))
+     (define length (syntax->datum #'m))
+     #`(decls #:import ([s add1] [less? <])
+         (coordinates 0 0)
+         ((coordinates N SM) :- (coordinates N M)
+                                ((less? N #,width) is #t)
+                                ((less? M #,(sub1 length)) is #t)
+                                ((s M) is SM))
+         ((coordinates SN M) :- (coordinates N M)
+                                ((less? N #,(sub1 width)) is #t)
+                                ((less? M #,length) is #t)
+                                ((s N) is SN)))]))
 
 (define world-gen
   (logic #:import ([s add1] [adjacent adjacent?])
     (grid-s 5 6 coordinates)
+    
     (((grid N M) is {'city 'forest 'mountain 'ocean 'plain}) :- (coordinates N M))
     (forbid ((grid X1 Y1) is 'city)
             ((grid X2 Y2) is 'city)
             ((adjacent X1 Y1 X2 Y2) is #t))
     (demand ((grid X Y) is 'city))
 
-    (((can-reach-water X Y) is {#t}) :- ((grid X Y) is 'ocean))
-    (((can-reach-water X Y) is? {#t}) :-
-     ((grid X Y) is _)
-     ((can-reach-water N M) is #t)
-     ((adjacent X Y N M) is #t))
-    (((can-reach-water X Y) is {#f}) :- ((grid X Y) is 'mountain))
+    (((can-reach-water X Y) is {#t})  :- ((grid X Y) is 'ocean))
+    (((can-reach-water X Y) is? {#t}) :- ((grid X Y) is _)
+                                         ((can-reach-water N M) is #t)
+                                         ((adjacent X Y N M) is #t))
+    (((can-reach-water X Y) is {#f})  :- ((grid X Y) is 'mountain))
 
     (forbid ((grid X Y) is 'city) ((can-reach-water X Y) is #f))))

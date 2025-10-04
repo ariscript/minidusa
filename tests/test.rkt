@@ -277,19 +277,19 @@
 
   (define (adjacent x1 y1 x2 y2)
     (or (and (= (abs (- x1 x2)) 1) (= y1 y2))
-             (and (= (abs (- y1 y2)) 1) (= x1 x2))))
+        (and (= (abs (- y1 y2)) 1) (= x1 x2))))
 
   #;(stream-first
    (solve
     (logic #:import (add1 < adjacent cons) #:extern (images)
-      ((grid 0 0) is {'city 'plain 'mountain 'forest 'ocean})
-      (((grid n sm) is {'city 'plain 'mountain 'forest 'ocean})
+      ((grid 0 0) is {'city 'plain 'mountain 'forest 'water})
+      (((grid n sm) is {'city 'plain 'mountain 'forest 'water})
        :-
        ((grid n m) is _)
        ((add1 m) is sm)
        ((< n 5) is #t)
        ((< m 4) is #t))
-      (((grid sn m) is {'city 'plain 'mountain 'forest 'ocean})
+      (((grid sn m) is {'city 'plain 'mountain 'forest 'water})
        :-
        ((grid n m) is _)
        ((add1 n) is sn)
@@ -304,7 +304,7 @@
 
       ; a tile is connected if there's a path to the ocean
       ; all cities should be connected to the ocean
-      (((connected n m) is {#t}) :- ((grid n m) is 'ocean))
+      (((connected n m) is {#t}) :- ((grid n m) is 'water))
       (((connected n m) is? {#t}) :-
                                   ((grid x y) is _a)
                                   ((grid n m) is _b)
